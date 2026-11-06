@@ -1,7 +1,7 @@
 {
   "name": "pos-tenan-mall",
   "private": true,
-  "license": "MIT",
+  "license": "UNLICENSED",
   "version": "0.1.0",
   "type": "module",
   "scripts": {

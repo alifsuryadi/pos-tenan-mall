@@ -60,4 +60,4 @@ Versi baru diunduh di latar belakang dan menunggu. Saat ada yang login, muncul t
 
 ## Lisensi
 
-[MIT](LICENSE)
+Hak cipta dilindungi (all rights reserved). Kode ini boleh dilihat, tetapi tidak boleh dipakai tanpa izin tertulis. Lihat [LICENSE](LICENSE).
