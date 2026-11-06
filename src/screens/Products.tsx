@@ -3,7 +3,9 @@ import { useState } from 'react'
 import * as repo from '../data/repo'
 import type { Product } from '../domain/schemas'
 import { reportError, useToast } from '../store'
-import { AmountInput, Button, Empty, Field, Input, Modal, PageTitle, dateTime, parseAmount, rupiah } from '../ui/kit'
+import { AmountInput, Button, Chip, Empty, Field, Input, Modal, PageTitle, Segmented, dateTime, parseAmount, rupiah, sheet } from '../ui/kit'
+
+const PRODUCT_COLUMNS = 'md:grid-cols-[minmax(0,1fr)_9rem_7rem_6rem_12rem]'
 
 export function Products({ ctx }: { ctx: repo.Ctx }) {
   const products = useLiveQuery(() => repo.listProducts(ctx), [ctx.tenantId])
@@ -29,47 +31,48 @@ export function Products({ ctx }: { ctx: repo.Ctx }) {
       </PageTitle>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Input aria-label="Cari produk" placeholder="Cari nama atau SKU" value={query} onChange={(e) => setQuery(e.target.value)} className="max-w-xs" />
-        <Button aria-pressed={lowOnly} onClick={() => setLowOnly(!lowOnly)} className={lowOnly ? 'border-rail! bg-rail! text-white!' : ''}>
+        <Button aria-pressed={lowOnly} onClick={() => setLowOnly(!lowOnly)} className={`tnum ${lowOnly ? 'border-ink! bg-ink! font-semibold text-white!' : ''}`}>
           Stok menipis ({lowCount})
         </Button>
       </div>
       {shown.length === 0 ? (
         <Empty title={products?.length ? 'Tidak ada produk yang cocok.' : 'Belum ada produk.'}>{products?.length ? 'Ubah pencarian atau filter.' : 'Tambahkan produk pertama toko Anda.'}</Empty>
       ) : (
-        <div className="overflow-x-auto bg-surface">
-          <table className="tnum w-full text-left">
-            <thead className="border-b border-line text-sm text-muted">
-              <tr>
-                <th className="p-3 font-medium">Produk</th>
-                <th className="p-3 font-medium">SKU</th>
-                <th className="p-3 text-right font-medium">Harga</th>
-                <th className="p-3 text-right font-medium">Stok</th>
-                <th className="p-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {shown.map((p) => (
-                <tr key={p.id} className={p.active ? '' : 'text-muted'}>
-                  <td className="p-3">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-sm text-muted">
-                      {p.category}
-                      {!p.active && ', tidak dijual'}
-                    </div>
-                  </td>
-                  <td className="p-3 whitespace-nowrap">{p.sku}</td>
-                  <td className="p-3 text-right whitespace-nowrap">{rupiah(p.price)}</td>
-                  <td className={`p-3 text-right ${isLow(p) ? 'font-semibold text-warn' : ''}`}>{p.trackStock ? p.stock : 'Tidak dilacak'}</td>
-                  <td className="p-2">
-                    <div className="flex justify-end gap-1">
-                      {p.trackStock && <Button onClick={() => setAdjusting(p)}>Ubah stok</Button>}
-                      <Button onClick={() => setEditing(p)}>Edit</Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className={`tnum ${sheet}`}>
+          {/* Baris yang sama menjadi tumpukan di ponsel, jadi halaman tidak perlu digulir mendatar. */}
+          <div aria-hidden="true" className={`hidden border-b border-line px-3 py-2 text-muted md:grid md:gap-x-3 ${PRODUCT_COLUMNS}`}>
+            <span>Produk</span>
+            <span>SKU</span>
+            <span className="text-right">Harga</span>
+            <span className="text-right">Stok</span>
+            <span />
+          </div>
+          <ul className="divide-y divide-line">
+            {shown.map((p) => (
+              <li key={p.id} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 px-3 py-2 md:gap-y-0 ${PRODUCT_COLUMNS}`}>
+                <div className="min-w-0 break-words">
+                  <div className="font-semibold">{p.name}</div>
+                  <div className="text-muted">
+                    {p.category}
+                    {!p.active && ', tidak dijual'}
+                  </div>
+                </div>
+                <div className="order-3 col-span-2 text-muted md:order-none md:col-span-1 md:break-all md:text-ink">
+                  <span className="md:hidden">SKU </span>
+                  {p.sku}
+                </div>
+                <div className="text-right text-lg font-semibold whitespace-nowrap md:text-base md:font-normal">{rupiah(p.price)}</div>
+                <div className="order-4 md:order-none md:text-right">
+                  <span className="md:hidden">Stok </span>
+                  {!p.trackStock ? <span className="text-muted">Tidak dilacak</span> : isLow(p) ? <Chip>{p.stock}</Chip> : p.stock}
+                </div>
+                <div className="order-5 flex justify-end gap-1 md:order-none">
+                  {p.trackStock && <Button onClick={() => setAdjusting(p)}>Ubah stok</Button>}
+                  <Button onClick={() => setEditing(p)}>Edit</Button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -84,8 +87,8 @@ export function Products({ ctx }: { ctx: repo.Ctx }) {
               {moves.map((m) => (
                 <li key={m.id} className="grid grid-cols-[1fr_auto] gap-x-4 py-2">
                   <span className="font-medium">{m.productName}</span>
-                  <span className={`text-right font-semibold ${m.delta < 0 ? 'text-danger' : 'text-ok'}`}>{m.delta > 0 ? `+${m.delta}` : m.delta}</span>
-                  <span className="col-span-2 text-sm text-muted">
+                  <span className={`text-right font-semibold ${m.delta < 0 ? 'text-danger' : 'text-pay'}`}>{m.delta > 0 ? `+${m.delta}` : m.delta}</span>
+                  <span className="col-span-2 text-muted">
                     {dateTime(m.at)}, {m.by}: {m.reason}
                   </span>
                 </li>
@@ -147,8 +150,8 @@ function ProductForm({ ctx, product, onClose }: { ctx: repo.Ctx; product: Produc
         <Field label="Harga jual (Rp)">
           <AmountInput required value={price} onChange={setPrice} />
         </Field>
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" className="size-5" checked={trackStock} onChange={(e) => setTrackStock(e.target.checked)} />
+        <label className="flex min-h-11 items-center gap-3">
+          <input type="checkbox" className="size-6 accent-ink" checked={trackStock} onChange={(e) => setTrackStock(e.target.checked)} />
           Lacak stok produk ini
         </label>
         {trackStock && (
@@ -164,12 +167,12 @@ function ProductForm({ ctx, product, onClose }: { ctx: repo.Ctx; product: Produc
           </div>
         )}
         {product && (
-          <label className="flex min-h-11 items-center gap-2">
-            <input type="checkbox" className="size-5" checked={active} onChange={(e) => setActive(e.target.checked)} />
+          <label className="flex min-h-11 items-center gap-3">
+            <input type="checkbox" className="size-6 accent-ink" checked={active} onChange={(e) => setActive(e.target.checked)} />
             Tampilkan di kasir
           </label>
         )}
-        <Button tone="primary" type="submit" className="w-full">
+        <Button tone="primary" type="submit" className="min-h-12 w-full">
           {product ? 'Simpan produk' : 'Tambah produk'}
         </Button>
       </form>
@@ -197,20 +200,22 @@ function AdjustForm({ ctx, product, onClose }: { ctx: repo.Ctx; product: Product
           }
         }}
       >
-        <div className="grid grid-cols-2 gap-1" role="group" aria-label="Arah perubahan">
-          {([1, -1] as const).map((d) => (
-            <button key={d} type="button" aria-pressed={direction === d} onClick={() => setDirection(d)} className={`min-h-11 font-medium ${direction === d ? 'bg-rail text-white' : 'border border-line'}`}>
-              {d === 1 ? 'Stok masuk' : 'Stok keluar'}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Arah perubahan"
+          value={direction}
+          onChange={setDirection}
+          options={[
+            { value: 1 as const, label: 'Stok masuk' },
+            { value: -1 as const, label: 'Stok keluar' },
+          ]}
+        />
         <Field label="Jumlah">
           <AmountInput autoFocus required value={qty} onChange={setQty} />
         </Field>
         <Field label="Alasan" hint="Misalnya kiriman pemasok, barang rusak, atau hasil hitung ulang.">
           <Input required value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
-        <Button tone="primary" type="submit" className="w-full">
+        <Button tone="primary" type="submit" className="min-h-12 w-full">
           Simpan perubahan stok
         </Button>
       </form>

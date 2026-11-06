@@ -3,7 +3,7 @@ import { useState } from 'react'
 import * as repo from '../data/repo'
 import { useSession } from '../store'
 import { UpdateBanner } from '../ui/UpdateBanner'
-import { readableOn } from '../ui/kit'
+import { Button, UnitTag } from '../ui/kit'
 import { AuditLog } from './AuditLog'
 import { History } from './History'
 import { Pos } from './Pos'
@@ -39,46 +39,42 @@ export function Shell({ ctx }: { ctx: repo.Ctx }) {
     settings &&
     (!settings.lastBackupAt || Date.now() - new Date(settings.lastBackupAt).getTime() > BACKUP_REMINDER_DAYS * 86_400_000)
 
+  const navItems = items.map((item) => (
+    <button
+      key={item.id}
+      type="button"
+      aria-current={view === item.id ? 'page' : undefined}
+      onClick={() => setView(item.id)}
+      className={`min-h-14 shrink-0 border-b-4 px-3 focus-visible:-outline-offset-4 xl:px-4 ${view === item.id ? 'border-ink font-bold' : 'border-transparent font-medium text-muted hover:text-ink'}`}
+    >
+      {item.label}
+    </button>
+  ))
+
   return (
-    <div className="flex h-full flex-col-reverse lg:flex-row">
-      <nav aria-label="Menu utama" className="flex shrink-0 overflow-x-auto bg-rail text-white lg:w-32 lg:flex-col lg:overflow-visible">
-        <div className="hidden p-3 font-sign lg:block" style={{ background: tenant.color, color: readableOn(tenant.color) }}>
-          <div className="text-3xl leading-none font-semibold">{tenant.unit}</div>
-          <div className="mt-1 text-lg leading-tight font-medium">{tenant.name}</div>
-        </div>
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-current={view === item.id ? 'page' : undefined}
-            onClick={() => setView(item.id)}
-            className={`min-h-14 shrink-0 px-4 text-left font-sign text-xl font-medium lg:px-3 ${
-              view === item.id ? 'bg-floor text-ink' : 'hover:bg-rail-soft'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-        <div className="flex shrink-0 items-center gap-3 px-3 lg:mt-auto lg:block lg:py-3">
-          <div className="hidden text-sm text-white/80 lg:block">{ctx.userName}</div>
-          <button type="button" onClick={signOut} className="min-h-11 font-medium whitespace-nowrap underline underline-offset-4">
-            Kunci
-          </button>
-        </div>
-      </nav>
+    <div className="flex h-full flex-col">
+      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line bg-surface pl-3 lg:pl-4">
+        <UnitTag unit={tenant.unit} color={tenant.color} />
+        <span title={tenant.name} className="sign min-w-0 flex-1 truncate text-xl md:hidden lg:block lg:max-w-56 lg:flex-none">
+          {tenant.name}
+        </span>
+        <nav aria-label="Menu utama" className="ml-1 hidden self-stretch md:flex lg:ml-3">
+          {navItems}
+        </nav>
+        <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
+          <span className="max-w-28 truncate text-muted md:hidden lg:inline">{ctx.userName}</span>
+          <Button tone="quiet" className="px-2" onClick={signOut}>
+            Keluar
+          </Button>
+        </span>
+      </header>
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 font-sign text-lg font-semibold lg:hidden" style={{ background: tenant.color, color: readableOn(tenant.color) }}>
-          <span>
-            {tenant.unit} {tenant.name}
-          </span>
-          <span className="font-medium">{ctx.userName}</span>
-        </div>
         <UpdateBanner />
         {stale && (
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-sign px-4 py-2 font-medium">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-warn px-4 py-1.5 font-medium">
             <span>{settings.lastBackupAt ? `Backup terakhir lebih dari ${BACKUP_REMINDER_DAYS} hari lalu.` : 'Data toko ini belum pernah dibackup.'} Data hanya tersimpan di perangkat ini.</span>
-            <button type="button" onClick={() => setView('settings')} className="min-h-9 underline underline-offset-3">
+            <button type="button" onClick={() => setView('settings')} className="min-h-11 font-semibold underline underline-offset-3">
               Buat backup
             </button>
           </div>
@@ -93,6 +89,10 @@ export function Shell({ ctx }: { ctx: repo.Ctx }) {
           {view === 'settings' && <Settings ctx={ctx} tenant={tenant} />}
         </div>
       </main>
+
+      <nav aria-label="Menu utama" className="flex shrink-0 overflow-x-auto border-t border-line bg-surface md:hidden">
+        {navItems}
+      </nav>
     </div>
   )
 }

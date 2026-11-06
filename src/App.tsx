@@ -33,7 +33,7 @@ export function App() {
   return (
     <>
       {!ready || empty === undefined ? (
-        <div className="grid h-full place-items-center font-sign text-2xl">Menyiapkan data di perangkat ini</div>
+        <div className="grid h-full place-items-center sign text-2xl">Menyiapkan data di perangkat ini</div>
       ) : empty ? (
         <Setup />
       ) : !ctx ? (
