@@ -1,30 +1,33 @@
 @import 'tailwindcss';
-@import '@fontsource/barlow/400.css';
-@import '@fontsource/barlow/500.css';
-@import '@fontsource/barlow/600.css';
-@import '@fontsource/barlow-condensed/500.css';
-@import '@fontsource/barlow-condensed/600.css';
-@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource-variable/archivo/standard.css';
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/600.css';
 
 @theme {
-  --color-ink: #12263a;
-  --color-rail: #0f2c4a;
-  --color-rail-soft: #1b3f63;
-  --color-floor: #e6ebef;
-  --color-surface: #fbfcfd;
-  --color-paper: #fffdf6;
-  --color-sign: #ffc629;
-  --color-sign-strong: #f0b400;
-  --color-line: #c5d0d9;
-  --color-muted: #4f6275;
+  /* Dasar antarmuka. Hijau hanya untuk tindakan utama, merah hanya untuk tindakan berisiko. */
+  --color-ink: #16211c;
+  --color-surface: #ffffff;
+  --color-floor: #e9ece8;
+  --color-muted: #56625b;
+  --color-line: #c9cfca;
+  --color-pay: #0b5d3b;
+  --color-pay-strong: #084a2f;
   --color-danger: #a8231b;
-  --color-ok: #0a6650;
-  --color-warn: #8a5a00;
-  --font-sans: 'Barlow', system-ui, sans-serif;
-  --font-sign: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  /* Warna khusus dengan satu arti: stok menipis, uang kertas, dan grafik. */
+  --color-warn: #ffd66b;
+  --color-note-100: #b5174b;
+  --color-note-50: #1a5ca8;
+  --color-chart: #16805a;
+  --radius-key: 6px;
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
   --font-receipt: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* Lebar sempit Archivo untuk judul, harga, dan total. */
+@utility sign {
+  font-stretch: 75%;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 html,
@@ -57,36 +60,26 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* Tepi sobekan struk thermal: elemen paling khas di layar kasir. */
-.receipt-edge {
-  --tooth: 7px;
-  -webkit-mask:
-    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom / calc(2 * var(--tooth)) calc(var(--tooth) + 1px) repeat-x,
-    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat;
-  mask:
-    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom / calc(2 * var(--tooth)) calc(var(--tooth) + 1px) repeat-x,
-    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat;
+/* Arsiran label rak untuk produk habis, supaya statusnya tidak hanya terbaca dari warna. */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, #e3e7e3 0 6px, transparent 6px 14px);
 }
 
 dialog::backdrop {
-  background: rgb(15 44 74 / 0.55);
+  background: rgb(22 33 28 / 0.55);
 }
 
-@keyframes receipt-feed {
+/* Menanggapi barang yang baru masuk ke struk. */
+@keyframes line-in {
   from {
-    transform: translateY(-14px);
-    clip-path: inset(14px 0 0 0);
-  }
-  to {
-    transform: translateY(0);
-    clip-path: inset(0);
+    background-color: var(--color-warn);
   }
 }
-.feed-in {
-  animation: receipt-feed 140ms ease-out;
+.line-in {
+  animation: line-in 140ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .feed-in {
+  .line-in {
     animation: none;
   }
 }

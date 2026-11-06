@@ -95,6 +95,68 @@ function requireRole(ctx: Ctx, ...roles: Role[]) {
   if (!roles.includes(ctx.role)) throw new UserError('Akun ini tidak punya akses untuk tindakan tersebut.')
 }
 
+// ---------- Penyiapan perangkat ----------
+
+export const isDeviceEmpty = async () => (await db.users.count()) === 0
+export const hasMallAccount = async () => (await db.users.where('tenantId').equals('mall').count()) > 0
+
+/** Akun pengelola hanya bisa dibuat di perangkat kosong, supaya tidak bisa dipakai mengambil alih data tenan. */
+export async function setupMall(pin: string): Promise<Ctx> {
+  const user = await makeUser('mall', 'Pengelola mall', 'mall', pin)
+  await db.transaction('rw', db.users, async () => {
+    if ((await db.users.count()) > 0) throw new UserError('Perangkat ini sudah disiapkan.')
+    await db.users.add(user)
+  })
+  const ctx: Ctx = { tenantId: 'mall', userId: user.id, userName: user.name, role: 'mall' }
+  await log(ctx, 'Siapkan perangkat', 'Perangkat pengelola mall')
+  return ctx
+}
+
+/** File penyiapan hanya berisi profil, akun, dan pengaturan tenan, tanpa produk atau transaksi. */
+export async function exportTenantSetup(ctx: Ctx, tenantId: string): Promise<Backup> {
+  requireRole(ctx, 'mall')
+  const tenant = await db.tenants.get(tenantId)
+  if (!tenant) throw new UserError('Tenan tidak ditemukan.')
+  const setup: Backup = {
+    kind: 'backup-tenan',
+    version: 1,
+    exportedAt: now(),
+    tenant,
+    users: await db.users.where('tenantId').equals(tenantId).toArray(),
+    products: [],
+    sales: [],
+    shifts: [],
+    stockMoves: [],
+    audit: [],
+    held: [],
+    settings: (await db.settings.get(tenantId)) ?? defaultSettings(tenantId),
+  }
+  await log(ctx, 'Buat file penyiapan', tenant.name)
+  return setup
+}
+
+/** Memasang tenan baru dari file. Tenan yang sudah ada ditolak agar datanya tidak bisa ditimpa tanpa login. */
+export async function addTenantFromFile(backup: Backup): Promise<Tenant> {
+  const id = backup.tenant.id
+  await db.transaction('rw', [db.tenants, db.users, db.products, db.sales, db.shifts, db.stockMoves, db.audit, db.held, db.settings], async () => {
+    const taken = await db.tenants.toArray()
+    if (taken.some((t) => t.id === id)) throw new UserError(`${backup.tenant.name} sudah ada di perangkat ini.`)
+    const unit = backup.tenant.unit.toLowerCase()
+    if (taken.some((t) => t.unit.toLowerCase() === unit)) throw new UserError(`Unit ${backup.tenant.unit} sudah terisi di perangkat ini.`)
+    await db.tenants.add(backup.tenant)
+    await db.users.bulkAdd(backup.users)
+    await db.products.bulkAdd(backup.products)
+    await db.sales.bulkAdd(backup.sales)
+    await db.shifts.bulkAdd(backup.shifts)
+    await db.stockMoves.bulkAdd(backup.stockMoves)
+    await db.audit.bulkAdd(backup.audit)
+    await db.held.bulkAdd(backup.held)
+    await db.settings.put(backup.settings)
+    await db.audit.add({ id: newId(), tenantId: id, action: 'Pasang tenan', detail: `File ${backup.exportedAt}`, by: 'Perangkat', at: now() })
+  })
+  return backup.tenant
+}
+
 // ---------- Direktori ----------
 
 export const listTenants = () => db.tenants.toArray()

@@ -4,7 +4,7 @@ import * as repo from '../data/repo'
 import { monthKey } from '../domain/calc'
 import type { Backup, Tenant } from '../domain/schemas'
 import { reportError, useToast } from '../store'
-import { Button, Field, Input, Modal, PageTitle, Select, dateTime, downloadFile, monthLabel, pickJsonFile } from '../ui/kit'
+import { Button, Field, Input, Modal, PageTitle, PinInput, Select, dateTime, downloadFile, monthLabel, pickJsonFile, sheet } from '../ui/kit'
 
 const MAX_QRIS_BYTES = 1_000_000
 
@@ -78,11 +78,11 @@ export function Settings({ ctx, tenant }: { ctx: repo.Ctx; tenant: Tenant }) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 p-4 sm:p-6">
+    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 [&>section]:border-t [&>section]:border-line [&>section]:pt-5">
       <PageTitle title="Pengaturan" />
 
       <section>
-        <h2 className="font-sign text-2xl font-semibold">Backup data</h2>
+        <h2 className="sign text-2xl">Backup data</h2>
         <p className="mt-1 mb-3 max-w-prose text-muted">
           Data toko hanya ada di perangkat ini. Kalau perangkat rusak atau data browser terhapus, data hanya bisa kembali dari file backup.
           {settings.lastBackupAt ? ` Backup terakhir ${dateTime(settings.lastBackupAt)}.` : ' Belum pernah dibackup.'}
@@ -113,7 +113,7 @@ export function Settings({ ctx, tenant }: { ctx: repo.Ctx; tenant: Tenant }) {
       </section>
 
       <section>
-        <h2 className="font-sign text-2xl font-semibold">Rekap untuk pengelola mall</h2>
+        <h2 className="sign text-2xl">Rekap untuk pengelola mall</h2>
         <p className="mt-1 mb-3 max-w-prose text-muted">File rekap hanya berisi total per bulan, tanpa daftar produk dan transaksi.</p>
         <div className="flex flex-wrap items-end gap-2">
           <Field label="Bulan">
@@ -130,7 +130,7 @@ export function Settings({ ctx, tenant }: { ctx: repo.Ctx; tenant: Tenant }) {
       </section>
 
       <section>
-        <h2 className="mb-3 font-sign text-2xl font-semibold">Struk dan pajak</h2>
+        <h2 className="mb-3 sign text-2xl">Struk dan pajak</h2>
         <form
           className="grid max-w-xl gap-3 sm:grid-cols-2"
           onSubmit={async (e) => {
@@ -166,15 +166,15 @@ export function Settings({ ctx, tenant }: { ctx: repo.Ctx; tenant: Tenant }) {
       </section>
 
       <section>
-        <h2 className="mb-1 font-sign text-2xl font-semibold">QRIS toko</h2>
+        <h2 className="mb-1 sign text-2xl">QRIS toko</h2>
         <p className="mb-3 max-w-prose text-muted">Gambar ini tampil saat kasir memilih pembayaran QRIS.</p>
         {settings.qrisImage && <img src={settings.qrisImage} alt="Kode QRIS toko" className="mb-3 max-h-48" />}
         <Button onClick={uploadQris}>{settings.qrisImage ? 'Ganti gambar QRIS' : 'Pasang gambar QRIS'}</Button>
       </section>
 
       <section>
-        <h2 className="mb-3 font-sign text-2xl font-semibold">PIN akun</h2>
-        <ul className="max-w-xl divide-y divide-line bg-surface">
+        <h2 className="mb-3 sign text-2xl">PIN akun</h2>
+        <ul className={`max-w-xl divide-y divide-line ${sheet}`}>
           {users.map((u) => (
             <li key={u.id} className="flex items-center justify-between px-4 py-2">
               <span className="font-medium">{u.name}</span>
@@ -206,7 +206,7 @@ export function Settings({ ctx, tenant }: { ctx: repo.Ctx; tenant: Tenant }) {
             }}
           >
             <Field label="PIN baru" hint="4 sampai 6 angka">
-              <Input autoFocus type="password" inputMode="numeric" value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+              <PinInput autoFocus inputMode="numeric" value={newPin} onChange={(e) => setNewPin(e.target.value)} />
             </Field>
             <Button tone="primary" type="submit" className="mt-3 w-full">
               Simpan PIN

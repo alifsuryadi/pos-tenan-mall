@@ -111,3 +111,46 @@ describe('backup', () => {
     expect(() => repo.parseBackup({ kind: 'lain' })).toThrow('bukan backup')
   })
 })
+
+describe('penyiapan perangkat', () => {
+  it('akun mall hanya bisa dibuat di perangkat kosong', async () => {
+    const ctx = await repo.setupMall('123456')
+    expect(ctx.role).toBe('mall')
+    await expect(repo.setupMall('654321')).rejects.toThrow('sudah disiapkan')
+    expect(await repo.hasMallAccount()).toBe(true)
+  })
+
+  it('PIN pengelola divalidasi', async () => {
+    await expect(repo.setupMall('12')).rejects.toThrow('PIN harus')
+    expect(await repo.isDeviceEmpty()).toBe(true)
+  })
+
+  it('file penyiapan memasang tenan di perangkat baru dan PIN-nya berlaku', async () => {
+    const { tenant, asOwner } = await makeTenant('L1-01')
+    await repo.openShift(asOwner, 0)
+    const raw = JSON.parse(JSON.stringify(await repo.exportTenantSetup(mallCtx, tenant.id)))
+    expect(raw.products).toEqual([])
+    expect(raw.shifts).toEqual([])
+
+    await repo.eraseDevice()
+    await repo.addTenantFromFile(repo.parseBackup(raw))
+    expect(await repo.hasMallAccount()).toBe(false)
+    const owner = (await repo.listUsers(tenant.id)).find((u) => u.role === 'owner')!
+    await expect(repo.login(owner.id, '0000')).rejects.toThrow('PIN salah')
+    expect((await repo.login(owner.id, '1111')).tenantId).toBe(tenant.id)
+  })
+
+  it('file tidak bisa menimpa tenan yang sudah ada atau unit yang terisi', async () => {
+    const { tenant } = await makeTenant('L1-01')
+    const setup = await repo.exportTenantSetup(mallCtx, tenant.id)
+    await expect(repo.addTenantFromFile(setup)).rejects.toThrow('sudah ada')
+    await expect(repo.addTenantFromFile({ ...setup, tenant: { ...setup.tenant, id: 'lain' }, users: [], settings: { ...setup.settings, tenantId: 'lain' } })).rejects.toThrow('sudah terisi')
+  })
+
+  it('file berisi akun pengelola mall ditolak', async () => {
+    const { tenant } = await makeTenant('L1-01')
+    const setup = await repo.exportTenantSetup(mallCtx, tenant.id)
+    const forged = { ...setup, users: [{ ...setup.users[0], role: 'mall' }] }
+    expect(() => repo.parseBackup(forged)).toThrow('bukan backup')
+  })
+})

@@ -1,9 +1,8 @@
 import { computeTotals } from '../domain/calc'
 import type { Product, Sale, Shift, Tenant, User } from '../domain/schemas'
 import { db } from './db'
+import { DEMO_PINS } from './demo'
 import { buildRekap, defaultSettings, makeUser, newId, previousMonth, storeRekap } from './repo'
-
-export const DEMO_PINS = { owner: '1111', cashier: '2222', mall: '9999' }
 
 type Row = [name: string, category: string, price: number, stock: number | null]
 
@@ -145,7 +144,7 @@ export function seedIfEmpty(): Promise<void> {
 }
 
 async function runSeed(): Promise<void> {
-  if ((await db.users.count()) > 0) return
+  if (!DEMO_PINS || (await db.users.count()) > 0) return
   const mall = await makeUser('mall', 'Pengelola mall', 'mall', DEMO_PINS.mall)
   const prepared: { tenant: Tenant; owner: User; cashier: User; products: Product[]; history: { sales: Sale[]; shifts: Shift[] }; taxRate: number }[] = []
   for (const [index, entry] of CATALOG.entries()) {

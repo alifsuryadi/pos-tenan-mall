@@ -1,16 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import * as repo from '../data/repo'
-import { DEMO_PINS } from '../data/seed'
+import { DEMO_PINS } from '../data/demo'
 import type { Tenant } from '../domain/schemas'
 import { reportError, useSession } from '../store'
-import { Button, readableOn } from '../ui/kit'
+import { Button, FloorLabel, RevealButton, Segmented, UnitTag, pickJsonFile, sheet } from '../ui/kit'
+import { installTenantFile } from './Setup'
 
 type Target = { kind: 'tenant'; tenant: Tenant } | { kind: 'mall' }
 
 /** Layar masuk dibuat seperti papan direktori mall: pilih tenan per lantai. */
 export function Login() {
   const tenants = useLiveQuery(() => repo.listTenants(), [])
+  const hasMall = useLiveQuery(() => repo.hasMallAccount(), [])
   const [target, setTarget] = useState<Target | null>(null)
 
   if (target) return <PinScreen target={target} onBack={() => setTarget(null)} />
@@ -19,35 +21,32 @@ export function Login() {
   const floors = [...new Set(active.map((t) => t.floor))].sort((a, b) => a - b)
 
   return (
-    <main className="min-h-full bg-rail text-white">
+    <main className="min-h-full">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-12">
-        <h1 className="font-sign text-5xl leading-none font-semibold sm:text-7xl">Direktori tenan</h1>
-        <p className="mt-3 text-lg text-white/80">Pilih toko Anda untuk mulai berjualan.</p>
+        <h1 className="sign text-5xl leading-none sm:text-6xl">Direktori tenan</h1>
+        <p className="mt-2 text-lg text-muted">Pilih toko Anda untuk mulai berjualan.</p>
 
-        <div className="mt-8 space-y-8">
+        {tenants && active.length === 0 && (
+          <p className="mt-8 rounded-key border border-dashed border-muted p-6">
+            {hasMall ? 'Belum ada tenan. Masuk sebagai pengelola mall untuk menambahkannya.' : 'Belum ada tenan aktif di perangkat ini.'}
+          </p>
+        )}
+
+        <div className="mt-8 space-y-6">
           {floors.map((floor) => (
-            <section key={floor} className="grid gap-3 sm:grid-cols-[6rem_1fr]">
-              <h2 className="font-sign text-3xl font-semibold text-sign">Lantai {floor}</h2>
-              <ul className="space-y-1">
+            <section key={floor} className="grid gap-x-4 gap-y-2 sm:grid-cols-[5rem_1fr]">
+              <FloorLabel floor={floor} />
+              <ul className={`self-start divide-y divide-line ${sheet}`}>
                 {active
                   .filter((t) => t.floor === floor)
                   .sort((a, b) => a.unit.localeCompare(b.unit))
                   .map((t) => (
                     <li key={t.id}>
-                      <button
-                        type="button"
-                        onClick={() => setTarget({ kind: 'tenant', tenant: t })}
-                        className="flex min-h-16 w-full items-stretch bg-rail-soft text-left hover:bg-white hover:text-ink"
-                      >
-                        <span
-                          className="flex w-24 shrink-0 items-center justify-center font-sign text-2xl font-semibold"
-                          style={{ background: t.color, color: readableOn(t.color) }}
-                        >
-                          {t.unit}
-                        </span>
-                        <span className="flex flex-1 flex-wrap items-baseline justify-between gap-x-4 self-center px-4 py-2">
-                          <span className="font-sign text-3xl font-medium">{t.name}</span>
-                          <span className="opacity-75">{t.category}</span>
+                      <button type="button" onClick={() => setTarget({ kind: 'tenant', tenant: t })} className="flex min-h-18 w-full items-center gap-4 px-3 py-2 text-left hover:bg-floor">
+                        <UnitTag unit={t.unit} color={t.color} className="min-w-20 px-2 py-2 text-xl" />
+                        <span className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-4">
+                          <span className="sign text-[28px] leading-tight break-words">{t.name}</span>
+                          <span className="text-muted">{t.category}</span>
                         </span>
                       </button>
                     </li>
@@ -57,10 +56,15 @@ export function Login() {
           ))}
         </div>
 
-        <div className="mt-10 border-t border-white/25 pt-5">
-          <button type="button" onClick={() => setTarget({ kind: 'mall' })} className="min-h-11 font-medium underline underline-offset-4">
-            Masuk sebagai pengelola mall
-          </button>
+        <div className="mt-10 flex flex-wrap gap-x-8 border-t border-line pt-4">
+          {hasMall && (
+            <Button tone="quiet" className="px-0" onClick={() => setTarget({ kind: 'mall' })}>
+              Masuk sebagai pengelola mall
+            </Button>
+          )}
+          <Button tone="quiet" className="px-0" onClick={() => pickJsonFile(installTenantFile, reportError)}>
+            Pasang tenan dari file
+          </Button>
         </div>
       </div>
     </main>
@@ -73,8 +77,10 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
   const users = useLiveQuery(() => repo.listUsers(tenantId), [tenantId])
   const [userId, setUserId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
+  const [reveal, setReveal] = useState(false)
   const [busy, setBusy] = useState(false)
   const selected = userId ?? (users?.length === 1 ? users[0].id : null)
+  const mustChoose = !selected && (users?.length ?? 0) > 1
 
   const submit = async (value: string) => {
     if (!selected || busy) return
@@ -84,6 +90,7 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
     } catch (err) {
       reportError(err)
       setPin('')
+      setReveal(false)
     } finally {
       setBusy(false)
     }
@@ -93,70 +100,87 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
     if (pin.length < 6) setPin(pin + digit)
   }
 
+  // PIN baru bisa diisi setelah akun terpilih, karena mengganti akun mengosongkan PIN.
   useEffect(() => {
+    if (!selected) return
     const onKey = (e: KeyboardEvent) => {
       if (/^\d$/.test(e.key)) setPin((p) => (p.length < 6 ? p + e.key : p))
       if (e.key === 'Backspace') setPin((p) => p.slice(0, -1))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [selected])
 
-  const color = target.kind === 'tenant' ? target.tenant.color : '#FFC629'
   const title = target.kind === 'tenant' ? target.tenant.name : 'Pengelola mall'
-  const demoHint = target.kind === 'mall' ? `PIN contoh: ${DEMO_PINS.mall}` : `PIN contoh: pemilik ${DEMO_PINS.owner}, kasir ${DEMO_PINS.cashier}`
+  const demoHint = DEMO_PINS && (target.kind === 'mall' ? `PIN contoh: ${DEMO_PINS.mall}` : `PIN contoh: pemilik ${DEMO_PINS.owner}, kasir ${DEMO_PINS.cashier}`)
+  const key = 'min-h-18 rounded-key border border-muted bg-surface hover:bg-floor active:bg-line disabled:border-line disabled:bg-floor disabled:text-muted'
 
   return (
-    <main className="grid min-h-full bg-rail text-white md:grid-cols-[1fr_26rem]">
-      <section className="flex flex-col justify-between p-6 sm:p-10" style={{ background: color, color: readableOn(color) }}>
-        <button type="button" onClick={onBack} className="min-h-11 self-start font-medium underline underline-offset-4">
+    <main className="grid min-h-full md:grid-cols-[1fr_27rem]">
+      <section className="flex flex-col justify-between gap-6 p-4 sm:p-8">
+        <Button tone="quiet" className="self-start px-0" onClick={onBack}>
           Kembali ke direktori
-        </button>
-        <div className="mt-8">
-          {target.kind === 'tenant' && <div className="font-sign text-3xl font-medium">{target.tenant.unit}</div>}
-          <h1 className="font-sign text-6xl leading-none font-semibold sm:text-8xl">{title}</h1>
+        </Button>
+        <div>
+          {target.kind === 'tenant' && <UnitTag unit={target.tenant.unit} color={target.tenant.color} className="mb-3 px-3 py-1.5 text-2xl" />}
+          <h1 className="sign text-5xl leading-none break-words sm:text-7xl">{title}</h1>
         </div>
       </section>
 
-      <section className="flex flex-col justify-center gap-5 p-6 sm:p-10">
+      <section className="flex flex-col justify-center gap-4 border-line bg-surface p-4 sm:p-8 md:border-l">
         {(users?.length ?? 0) > 1 && (
-          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Pilih akun">
-            {users!.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                aria-pressed={selected === u.id}
-                onClick={() => {
-                  setUserId(u.id)
-                  setPin('')
-                }}
-                className={`min-h-12 font-medium ${selected === u.id ? 'bg-sign text-ink' : 'bg-rail-soft text-white'}`}
-              >
-                {u.name}
-              </button>
-            ))}
+          <div>
+            <p className="mb-1 font-medium">Masuk sebagai</p>
+            <Segmented
+              label="Pilih akun"
+              itemClassName="min-h-14 text-lg"
+              value={selected ?? ''}
+              onChange={(id) => {
+                setUserId(id)
+                setPin('')
+                setReveal(false)
+              }}
+              options={users!.map((u) => ({ value: u.id, label: u.name }))}
+            />
           </div>
         )}
-        <div aria-live="polite" aria-label={`${pin.length} angka PIN terisi`} className="flex h-10 items-center justify-center gap-3">
-          {pin.length === 0 ? <span className="text-white/75">Masukkan PIN</span> : Array.from(pin).map((_, i) => <span key={i} className="size-4 rounded-full bg-sign" />)}
+        <div className="relative">
+          <div aria-live="polite" aria-label={mustChoose ? 'Pilih akun dulu' : `${pin.length} angka PIN terisi`} className="flex h-12 items-center justify-center gap-3">
+            {mustChoose ? (
+              <span className="font-semibold">Pilih akun dulu</span>
+            ) : pin.length === 0 ? (
+              <span className="text-muted">Masukkan PIN</span>
+            ) : (
+              Array.from(pin).map((digit, i) =>
+                reveal ? (
+                  <span key={i} className="sign text-4xl">
+                    {digit}
+                  </span>
+                ) : (
+                  <span key={i} className="size-4 rounded-full bg-ink" />
+                ),
+              )
+            )}
+          </div>
+          {pin.length > 0 && <RevealButton shown={reveal} onToggle={() => setReveal(!reveal)} className="absolute top-0.5 right-0" />}
         </div>
         <div className="grid grid-cols-3 gap-2">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
-            <button key={d} type="button" onClick={() => press(d)} className="tnum h-16 bg-rail-soft font-sign text-3xl font-medium hover:bg-white hover:text-ink">
+            <button key={d} type="button" disabled={!selected} onClick={() => press(d)} className={`sign text-4xl ${key}`}>
               {d}
             </button>
           ))}
-          <button type="button" onClick={() => setPin(pin.slice(0, -1))} className="h-16 bg-rail-soft font-medium hover:bg-white hover:text-ink">
+          <button type="button" disabled={!selected} onClick={() => setPin(pin.slice(0, -1))} className={`font-medium ${key}`}>
             Hapus
           </button>
-          <button type="button" onClick={() => press('0')} className="tnum h-16 bg-rail-soft font-sign text-3xl font-medium hover:bg-white hover:text-ink">
+          <button type="button" disabled={!selected} onClick={() => press('0')} className={`sign text-4xl ${key}`}>
             0
           </button>
-          <Button tone="primary" className="h-16 rounded-none" disabled={!selected || pin.length < 4 || busy} onClick={() => submit(pin)}>
+          <Button tone="primary" className="min-h-18 text-lg" disabled={!selected || pin.length < 4 || busy} onClick={() => submit(pin)}>
             Masuk
           </Button>
         </div>
-        <p className="text-center text-sm text-white/80">{selected ? demoHint : 'Pilih akun dulu.'}</p>
+        <p className="min-h-6 text-center text-muted">{selected && demoHint}</p>
       </section>
     </main>
   )
