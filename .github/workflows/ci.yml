@@ -52,6 +52,10 @@ jobs:
     needs: verify
     if: github.event_name == 'push' && github.ref_name == 'dev'
     runs-on: ubuntu-latest
+    # Bagian environment yang membuat deploy tercatat di panel Deployments GitHub.
+    environment:
+      name: staging
+      url: https://dev.pos-tenan-mall.pages.dev
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
