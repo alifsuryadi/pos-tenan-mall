@@ -80,6 +80,7 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
   const [reveal, setReveal] = useState(false)
   const [busy, setBusy] = useState(false)
   const selected = userId ?? (users?.length === 1 ? users[0].id : null)
+  const mustChoose = !selected && (users?.length ?? 0) > 1
 
   const submit = async (value: string) => {
     if (!selected || busy) return
@@ -99,18 +100,20 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
     if (pin.length < 6) setPin(pin + digit)
   }
 
+  // PIN baru bisa diisi setelah akun terpilih, karena mengganti akun mengosongkan PIN.
   useEffect(() => {
+    if (!selected) return
     const onKey = (e: KeyboardEvent) => {
       if (/^\d$/.test(e.key)) setPin((p) => (p.length < 6 ? p + e.key : p))
       if (e.key === 'Backspace') setPin((p) => p.slice(0, -1))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [selected])
 
   const title = target.kind === 'tenant' ? target.tenant.name : 'Pengelola mall'
   const demoHint = DEMO_PINS && (target.kind === 'mall' ? `PIN contoh: ${DEMO_PINS.mall}` : `PIN contoh: pemilik ${DEMO_PINS.owner}, kasir ${DEMO_PINS.cashier}`)
-  const key = 'min-h-18 rounded-key border border-muted bg-surface hover:bg-floor active:bg-line'
+  const key = 'min-h-18 rounded-key border border-muted bg-surface hover:bg-floor active:bg-line disabled:border-line disabled:bg-floor disabled:text-muted'
 
   return (
     <main className="grid min-h-full md:grid-cols-[1fr_27rem]">
@@ -126,21 +129,26 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
 
       <section className="flex flex-col justify-center gap-4 border-line bg-surface p-4 sm:p-8 md:border-l">
         {(users?.length ?? 0) > 1 && (
-          <Segmented
-            label="Pilih akun"
-            itemClassName="min-h-14 text-lg"
-            value={selected ?? ''}
-            onChange={(id) => {
-              setUserId(id)
-              setPin('')
-              setReveal(false)
-            }}
-            options={users!.map((u) => ({ value: u.id, label: u.name }))}
-          />
+          <div>
+            <p className="mb-1 font-medium">Masuk sebagai</p>
+            <Segmented
+              label="Pilih akun"
+              itemClassName="min-h-14 text-lg"
+              value={selected ?? ''}
+              onChange={(id) => {
+                setUserId(id)
+                setPin('')
+                setReveal(false)
+              }}
+              options={users!.map((u) => ({ value: u.id, label: u.name }))}
+            />
+          </div>
         )}
         <div className="relative">
-          <div aria-live="polite" aria-label={`${pin.length} angka PIN terisi`} className="flex h-12 items-center justify-center gap-3">
-            {pin.length === 0 ? (
+          <div aria-live="polite" aria-label={mustChoose ? 'Pilih akun dulu' : `${pin.length} angka PIN terisi`} className="flex h-12 items-center justify-center gap-3">
+            {mustChoose ? (
+              <span className="font-semibold">Pilih akun dulu</span>
+            ) : pin.length === 0 ? (
               <span className="text-muted">Masukkan PIN</span>
             ) : (
               Array.from(pin).map((digit, i) =>
@@ -158,21 +166,21 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
-            <button key={d} type="button" onClick={() => press(d)} className={`sign text-4xl ${key}`}>
+            <button key={d} type="button" disabled={!selected} onClick={() => press(d)} className={`sign text-4xl ${key}`}>
               {d}
             </button>
           ))}
-          <button type="button" onClick={() => setPin(pin.slice(0, -1))} className={`font-medium ${key}`}>
+          <button type="button" disabled={!selected} onClick={() => setPin(pin.slice(0, -1))} className={`font-medium ${key}`}>
             Hapus
           </button>
-          <button type="button" onClick={() => press('0')} className={`sign text-4xl ${key}`}>
+          <button type="button" disabled={!selected} onClick={() => press('0')} className={`sign text-4xl ${key}`}>
             0
           </button>
           <Button tone="primary" className="min-h-18 text-lg" disabled={!selected || pin.length < 4 || busy} onClick={() => submit(pin)}>
             Masuk
           </Button>
         </div>
-        <p className="min-h-6 text-center text-muted">{selected ? demoHint : 'Pilih akun dulu.'}</p>
+        <p className="min-h-6 text-center text-muted">{selected && demoHint}</p>
       </section>
     </main>
   )
