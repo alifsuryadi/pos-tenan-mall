@@ -44,6 +44,10 @@ Satu perangkat bersama tidak perlu file: tenan yang ditambahkan pengelola langsu
 
 Lihat [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Pembaruan aplikasi
+
+Versi baru diunduh di latar belakang dan menunggu. Saat ada yang login, muncul tombol **Muat ulang** dan isi struk tetap tersimpan. Saat tidak ada yang login, versi baru langsung diterapkan.
+
 ## Batasan yang disengaja
 
 - Data hanya ada di satu perangkat, jadi backup dan rekap berpindah lewat file.
