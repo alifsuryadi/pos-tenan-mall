@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Terbitkan rilis
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Pastikan tag berada di main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $TAG harus menunjuk commit yang sudah ada di main."
+            exit 1
+          fi
+
+      - name: Pastikan versi package.json sama dengan tag
+        run: |
+          VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::package.json berisi $VERSION, tetapi tag-nya $TAG."
+            exit 1
+          fi
+
+      - name: Pasang dependensi
+        run: npm ci
+
+      - name: Jalankan tes
+        run: npm test
+
+      - name: Periksa tipe dan build
+        run: npm run build
+
+      - name: Kemas hasil build
+        run: cd dist && zip -r "../pos-tenan-mall-$TAG.zip" .
+
+      - name: Buat GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" "pos-tenan-mall-$TAG.zip" --title "$TAG" --generate-notes --verify-tag

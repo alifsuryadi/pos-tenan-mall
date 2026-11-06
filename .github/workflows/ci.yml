@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Tes dan build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Pasang dependensi
+        run: npm ci
+
+      - name: Jalankan tes
+        run: npm test
+
+      - name: Periksa tipe dan build
+        run: npm run build
+
+      # dev menghasilkan paket staging, main menghasilkan paket produksi.
+      - name: Simpan hasil build
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pos-${{ github.ref_name == 'main' && 'production' || 'staging' }}-${{ github.sha }}
+          path: dist
+          retention-days: 14
+          if-no-files-found: error
+
+  merge-direction:
+    name: Periksa arah merge
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # Hanya dev, release/* dan hotfix/* yang boleh masuk ke main.
+      - name: Tolak PR ke main dari branch lain
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          if [ "$BASE" = "main" ] && ! [[ "$HEAD" == "dev" || "$HEAD" == release/* || "$HEAD" == hotfix/* ]]; then
+            echo "::error::Branch $HEAD harus masuk ke dev dulu. Hanya dev, release/* dan hotfix/* yang boleh masuk ke main."
+            exit 1
+          fi

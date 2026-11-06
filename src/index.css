@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+@theme {
+  --color-ink: #12263a;
+  --color-rail: #0f2c4a;
+  --color-rail-soft: #1b3f63;
+  --color-floor: #e6ebef;
+  --color-surface: #fbfcfd;
+  --color-paper: #fffdf6;
+  --color-sign: #ffc629;
+  --color-sign-strong: #f0b400;
+  --color-line: #c5d0d9;
+  --color-muted: #4f6275;
+  --color-danger: #a8231b;
+  --color-ok: #0a6650;
+  --color-warn: #8a5a00;
+  --font-sans: 'Barlow', system-ui, sans-serif;
+  --font-sign: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-receipt: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-floor);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 3px solid #1565c0;
+  outline-offset: 2px;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tepi sobekan struk thermal: elemen paling khas di layar kasir. */
+.receipt-edge {
+  --tooth: 7px;
+  -webkit-mask:
+    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom / calc(2 * var(--tooth)) calc(var(--tooth) + 1px) repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat;
+  mask:
+    conic-gradient(from -45deg at bottom, #000 90deg, #0000 0) bottom / calc(2 * var(--tooth)) calc(var(--tooth) + 1px) repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat;
+}
+
+dialog::backdrop {
+  background: rgb(15 44 74 / 0.55);
+}
+
+@keyframes receipt-feed {
+  from {
+    transform: translateY(-14px);
+    clip-path: inset(14px 0 0 0);
+  }
+  to {
+    transform: translateY(0);
+    clip-path: inset(0);
+  }
+}
+.feed-in {
+  animation: receipt-feed 140ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed-in {
+    animation: none;
+  }
+}
+
+#print-root {
+  display: none;
+}
+
+@media print {
+  body > *:not(#print-root) {
+    display: none !important;
+  }
+  #print-root {
+    display: block;
+  }
+  body {
+    background: #fff;
+  }
+}
