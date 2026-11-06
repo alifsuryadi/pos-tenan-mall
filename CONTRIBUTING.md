@@ -24,9 +24,10 @@ hotfix/* ───────────────────────�
 | Workflow | Berjalan saat | Hasil |
 |---|---|---|
 | CI | PR ke `main` atau `dev`, dan push ke keduanya | Tes, pemeriksaan tipe, dan build |
+| CI | PR dan push yang sama | Image Docker dibangun, dijalankan, dan diperiksa lewat `docker/smoke-test.sh` |
 | CI (push) | Push ke `dev` | Artefak `pos-staging-<commit>` disimpan 14 hari, lalu deploy ke staging |
 | CI (push) | Push ke `main` | Artefak `pos-production-<commit>`, disimpan 14 hari |
-| Release | Push tag `vX.Y.Z` | GitHub Release berisi zip hasil build, lalu deploy ke produksi jika diaktifkan |
+| Release | Push tag `vX.Y.Z` | GitHub Release berisi zip hasil build, image Docker di `ghcr.io`, lalu deploy ke produksi jika diaktifkan |
 
 ## Deploy ke Cloudflare Pages
 
