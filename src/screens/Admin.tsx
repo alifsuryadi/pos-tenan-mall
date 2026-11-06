@@ -5,6 +5,7 @@ import { prepareDevice } from '../data/boot'
 import { DEMO_ENABLED } from '../data/demo'
 import type { Backup, Tenant } from '../domain/schemas'
 import { reportError, useSession, useToast } from '../store'
+import { UpdateBanner } from '../ui/UpdateBanner'
 import { Button, Empty, Field, Input, Modal, PageTitle, Select, Stat, dateTime, downloadFile, monthLabel, pickJsonFile, readableOn, rupiah } from '../ui/kit'
 
 export function Admin({ ctx }: { ctx: repo.Ctx }) {
@@ -49,6 +50,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
           Kunci
         </button>
       </header>
+      <UpdateBanner />
       <main className="mx-auto max-w-5xl space-y-10 p-4 sm:p-6">
         <section>
           <PageTitle title="Rekap tenan">

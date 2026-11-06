@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import * as repo from '../data/repo'
 import { useSession } from '../store'
+import { UpdateBanner } from '../ui/UpdateBanner'
 import { readableOn } from '../ui/kit'
 import { AuditLog } from './AuditLog'
 import { History } from './History'
@@ -73,6 +74,7 @@ export function Shell({ ctx }: { ctx: repo.Ctx }) {
           </span>
           <span className="font-medium">{ctx.userName}</span>
         </div>
+        <UpdateBanner />
         {stale && (
           <div className="flex flex-wrap items-center justify-between gap-2 bg-sign px-4 py-2 font-medium">
             <span>{settings.lastBackupAt ? `Backup terakhir lebih dari ${BACKUP_REMINDER_DAYS} hari lalu.` : 'Data toko ini belum pernah dibackup.'} Data hanya tersimpan di perangkat ini.</span>
