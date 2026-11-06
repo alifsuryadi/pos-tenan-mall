@@ -4,30 +4,32 @@ import type { Sale, Settings, Tenant } from '../domain/schemas'
 import { METHOD_LABEL, dateTime, rupiah } from './kit'
 
 export function ReceiptBody({ sale, tenant, settings }: { sale: Sale; tenant: Tenant; settings: Settings }) {
-  const row = 'flex justify-between gap-2'
+  // Mengalir ke baris baru bila nominal panjang tidak muat di kertas 58 mm.
+  const row = 'flex flex-wrap justify-between gap-x-2'
+  const rule = 'my-2 border-t border-dashed border-black'
   return (
-    <div className="font-receipt text-[12px] leading-snug text-black">
+    <div className="font-receipt text-[12px] leading-snug break-words text-black">
       <div className="text-center">
-        <div className="text-[15px] font-semibold">{tenant.name}</div>
+        <div className="text-[16px] font-semibold">{tenant.name}</div>
         <div>Unit {tenant.unit}</div>
       </div>
-      <div className="my-2 border-t border-dashed border-black" />
+      <div className={rule} />
       <div>{sale.number}</div>
       <div>{dateTime(sale.createdAt)}</div>
       <div>Kasir: {sale.cashierName}</div>
-      <div className="my-2 border-t border-dashed border-black" />
+      <div className={rule} />
       {sale.items.map((item) => (
         <div key={item.productId} className="mb-1">
-          <div>{item.name}</div>
+          <div className="font-semibold">{item.name}</div>
           <div className={row}>
             <span>
               {item.qty} x {rupiah(item.price)}
             </span>
-            <span>{rupiah(item.qty * item.price)}</span>
+            <span className="ml-auto">{rupiah(item.qty * item.price)}</span>
           </div>
         </div>
       ))}
-      <div className="my-2 border-t border-dashed border-black" />
+      <div className={rule} />
       <div className={row}>
         <span>Subtotal</span>
         <span>{rupiah(sale.subtotal)}</span>
@@ -44,7 +46,7 @@ export function ReceiptBody({ sale, tenant, settings }: { sale: Sale; tenant: Te
           <span>{rupiah(sale.tax)}</span>
         </div>
       )}
-      <div className={`${row} text-[15px] font-semibold`}>
+      <div className={`${row} my-1 border-y-2 border-black py-1 text-[16px] font-semibold`}>
         <span>Total</span>
         <span>{rupiah(sale.total)}</span>
       </div>
@@ -60,9 +62,9 @@ export function ReceiptBody({ sale, tenant, settings }: { sale: Sale; tenant: Te
       )}
       {sale.reference && <div>Ref: {sale.reference}</div>}
       {sale.status !== 'completed' && (
-        <div className="mt-2 border border-black p-1 text-center font-semibold">{sale.status === 'voided' ? 'DIBATALKAN' : 'DIREFUND'}</div>
+        <div className="mt-2 border-2 border-black p-1 text-center font-semibold">{sale.status === 'voided' ? 'DIBATALKAN' : 'DIREFUND'}</div>
       )}
-      <div className="my-2 border-t border-dashed border-black" />
+      <div className={rule} />
       <div className="text-center">{settings.receiptFooter}</div>
     </div>
   )

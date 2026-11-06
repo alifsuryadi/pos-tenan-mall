@@ -5,7 +5,7 @@ import { dayKey } from '../domain/calc'
 import type { Sale, Tenant } from '../domain/schemas'
 import { reportError, useToast } from '../store'
 import { ReceiptBody, printReceipt } from '../ui/Receipt'
-import { Button, Empty, Field, Input, METHOD_LABEL, Modal, PageTitle, dateTime, rupiah } from '../ui/kit'
+import { Button, Empty, Field, Input, METHOD_LABEL, Modal, PageTitle, PinInput, dateTime, rupiah, sheet } from '../ui/kit'
 
 const STATUS = { completed: 'Selesai', voided: 'Dibatalkan', refunded: 'Direfund' } as const
 
@@ -27,12 +27,12 @@ export function History({ ctx, tenant }: { ctx: repo.Ctx; tenant: Tenant }) {
       {sales?.length === 0 ? (
         <Empty title="Tidak ada transaksi pada tanggal ini.">Pilih tanggal lain, atau catat penjualan di menu Kasir.</Empty>
       ) : (
-        <ul className="divide-y divide-line bg-surface">
+        <ul className={`divide-y divide-line ${sheet}`}>
           {sales?.map((sale) => (
             <li key={sale.id}>
-              <button type="button" onClick={() => setSelectedId(sale.id)} className="tnum grid min-h-14 w-full grid-cols-[1fr_auto] gap-x-4 px-4 py-2 text-left hover:bg-white">
+              <button type="button" onClick={() => setSelectedId(sale.id)} className="tnum grid min-h-16 w-full grid-cols-[1fr_auto] items-baseline gap-x-4 px-4 py-2 text-left hover:bg-floor">
                 <span className="font-medium">{sale.number}</span>
-                <span className={`text-right font-sign text-xl font-semibold ${sale.status !== 'completed' ? 'text-muted line-through' : ''}`}>{rupiah(sale.total)}</span>
+                <span className={`sign text-right text-2xl ${sale.status !== 'completed' ? 'text-muted line-through' : ''}`}>{rupiah(sale.total)}</span>
                 <span className="text-sm text-muted">
                   {new Date(sale.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}, {METHOD_LABEL[sale.method]}, {sale.cashierName}
                 </span>
@@ -57,11 +57,11 @@ function SaleDialog({ ctx, sale, tenant, settings, onClose }: { ctx: repo.Ctx; s
 
   return (
     <Modal title={sale.number} onClose={onClose}>
-      <div className="max-h-80 overflow-y-auto border border-line bg-paper p-3">
+      <div className={`max-h-80 overflow-y-auto p-3 ${sheet}`}>
         <ReceiptBody sale={sale} tenant={tenant} settings={settings} />
       </div>
       {sale.reversal && (
-        <p className="mt-3 text-sm">
+        <p className="mt-3">
           {STATUS[sale.status]} oleh {sale.reversal.by}, {dateTime(sale.reversal.at)}. Alasan: {sale.reversal.reason}
         </p>
       )}
@@ -79,7 +79,7 @@ function SaleDialog({ ctx, sale, tenant, settings, onClose }: { ctx: repo.Ctx; s
             }
           }}
         >
-          <p className="text-sm text-muted">
+          <p className="font-medium">
             {willVoid ? 'Seluruh transaksi dibatalkan dan stok dikembalikan.' : `Refund seluruh transaksi. ${sale.method === 'cash' ? 'Uang tunai keluar dari laci shift berjalan.' : 'Kembalikan dana lewat metode pembayarannya.'}`}
           </p>
           <Field label="Alasan">
@@ -87,10 +87,10 @@ function SaleDialog({ ctx, sale, tenant, settings, onClose }: { ctx: repo.Ctx; s
           </Field>
           {ctx.role !== 'owner' && (
             <Field label="PIN pemilik">
-              <Input type="password" inputMode="numeric" required value={pin} onChange={(e) => setPin(e.target.value)} />
+              <PinInput inputMode="numeric" required value={pin} onChange={(e) => setPin(e.target.value)} />
             </Field>
           )}
-          <Button tone="danger" type="submit" className="w-full">
+          <Button tone="danger" type="submit" className="min-h-14 w-full">
             {word} transaksi
           </Button>
         </form>

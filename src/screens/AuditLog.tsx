@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import * as repo from '../data/repo'
-import { Empty, PageTitle, dateTime } from '../ui/kit'
+import { Empty, PageTitle, dateTime, sheet } from '../ui/kit'
 
 export function AuditLog({ ctx }: { ctx: repo.Ctx }) {
   const rows = useLiveQuery(() => repo.listAudit(ctx), [ctx.tenantId])
@@ -10,14 +10,14 @@ export function AuditLog({ ctx }: { ctx: repo.Ctx }) {
       {rows?.length === 0 ? (
         <Empty title="Belum ada aktivitas." />
       ) : (
-        <ul className="divide-y divide-line bg-surface">
+        <ul className={`divide-y divide-line ${sheet}`}>
           {rows?.map((row) => (
-            <li key={row.id} className="px-4 py-2">
+            <li key={row.id} className="px-4 py-2.5">
               <div className="flex flex-wrap justify-between gap-x-4">
-                <span className="font-medium">{row.action}</span>
+                <span className="font-semibold">{row.action}</span>
                 <span className="tnum text-sm text-muted">{dateTime(row.at)}</span>
               </div>
-              <div className="text-sm text-muted">
+              <div className="break-words text-muted">
                 {row.by}: {row.detail}
               </div>
             </li>

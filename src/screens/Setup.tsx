@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as repo from '../data/repo'
 import { reportError, useSession, useToast } from '../store'
-import { Button, Field, Input, pickJsonFile } from '../ui/kit'
+import { Button, Field, PinInput, pickJsonFile, sheet } from '../ui/kit'
 
 export async function installTenantFile(raw: unknown) {
   try {
@@ -18,17 +18,17 @@ export function Setup() {
   const [mallForm, setMallForm] = useState(false)
   const [pin, setPin] = useState('')
   const [repeat, setRepeat] = useState('')
-  const choice = 'block w-full bg-rail-soft p-5 text-left hover:bg-white hover:text-ink'
+  const choice = 'block w-full p-5 text-left hover:bg-floor'
 
   return (
-    <main className="min-h-full bg-rail text-white">
+    <main className="min-h-full">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-8 sm:py-12">
-        <h1 className="font-sign text-5xl leading-none font-semibold sm:text-7xl">Siapkan perangkat ini</h1>
-        <p className="mt-3 text-lg text-white/80">Perangkat ini akan dipakai oleh siapa?</p>
+        <h1 className="sign text-5xl leading-none sm:text-6xl">Siapkan perangkat ini</h1>
+        <p className="mt-2 text-lg text-muted">Perangkat ini akan dipakai oleh siapa?</p>
 
         {mallForm ? (
           <form
-            className="mt-8 bg-surface p-5 text-ink"
+            className={`mt-8 p-5 ${sheet}`}
             onSubmit={async (e) => {
               e.preventDefault()
               if (pin !== repeat) return reportError(new Error('Kedua PIN tidak sama.'))
@@ -39,13 +39,13 @@ export function Setup() {
               }
             }}
           >
-            <h2 className="mb-3 font-sign text-3xl font-semibold">Buat PIN pengelola mall</h2>
+            <h2 className="sign mb-3 text-3xl">Buat PIN pengelola mall</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="PIN baru" hint="4 sampai 6 angka">
-                <Input autoFocus required type="password" inputMode="numeric" autoComplete="new-password" value={pin} onChange={(e) => setPin(e.target.value)} />
+                <PinInput autoFocus required inputMode="numeric" autoComplete="new-password" value={pin} onChange={(e) => setPin(e.target.value)} />
               </Field>
               <Field label="Ulangi PIN">
-                <Input required type="password" inputMode="numeric" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
+                <PinInput required inputMode="numeric" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
               </Field>
             </div>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -56,19 +56,19 @@ export function Setup() {
             </div>
           </form>
         ) : (
-          <div className="mt-8 space-y-1">
+          <div className={`mt-8 divide-y divide-line ${sheet}`}>
             <button type="button" className={choice} onClick={() => setMallForm(true)}>
-              <span className="block font-sign text-3xl font-medium">Perangkat pengelola mall</span>
-              <span className="mt-1 block opacity-80">Menambahkan tenan dan menerima rekap dari tenan.</span>
+              <span className="sign block text-3xl">Perangkat pengelola mall</span>
+              <span className="mt-1 block text-muted">Menambahkan tenan dan menerima rekap dari tenan.</span>
             </button>
             <button type="button" className={choice} onClick={() => pickJsonFile(installTenantFile, reportError)}>
-              <span className="block font-sign text-3xl font-medium">Perangkat tenan</span>
-              <span className="mt-1 block opacity-80">Pilih file penyiapan dari pengelola mall, atau file backup toko Anda.</span>
+              <span className="sign block text-3xl">Perangkat tenan</span>
+              <span className="mt-1 block text-muted">Pilih file penyiapan dari pengelola mall, atau file backup toko Anda.</span>
             </button>
           </div>
         )}
 
-        <p className="mt-8 max-w-prose text-white/80">Semua data tersimpan hanya di perangkat ini. Buat backup secara rutin dari menu Pengaturan.</p>
+        <p className="mt-6 max-w-prose text-muted">Semua data tersimpan hanya di perangkat ini. Buat backup secara rutin dari menu Pengaturan.</p>
       </div>
     </main>
   )

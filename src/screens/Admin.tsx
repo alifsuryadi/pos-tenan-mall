@@ -6,7 +6,7 @@ import { DEMO_ENABLED } from '../data/demo'
 import type { Backup, Tenant } from '../domain/schemas'
 import { reportError, useSession, useToast } from '../store'
 import { UpdateBanner } from '../ui/UpdateBanner'
-import { Button, Empty, Field, Input, Modal, PageTitle, Select, Stat, dateTime, downloadFile, monthLabel, pickJsonFile, readableOn, rupiah } from '../ui/kit'
+import { Button, Chip, Empty, Field, Input, Modal, PageTitle, PinInput, Select, UnitTag, dateTime, downloadFile, monthLabel, pickJsonFile, rupiah, sheet } from '../ui/kit'
 
 export function Admin({ ctx }: { ctx: repo.Ctx }) {
   const signOut = useSession((s) => s.signOut)
@@ -44,11 +44,11 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
 
   return (
     <div className="h-full overflow-y-auto">
-      <header className="flex items-center justify-between bg-rail px-4 py-3 text-white sm:px-6">
-        <span className="font-sign text-2xl font-semibold">Pengelola mall</span>
-        <button type="button" onClick={signOut} className="min-h-11 font-medium underline underline-offset-4">
+      <header className="flex min-h-14 items-center justify-between border-b border-line bg-surface pr-2 pl-4 sm:pl-6">
+        <span className="sign text-2xl">Pengelola mall</span>
+        <Button tone="quiet" className="px-2" onClick={signOut}>
           Kunci
-        </button>
+        </Button>
       </header>
       <UpdateBanner />
       <main className="mx-auto max-w-5xl space-y-10 p-4 sm:p-6">
@@ -70,14 +70,23 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
               Terima file rekap
             </Button>
           </PageTitle>
-          <div className="mb-5 grid grid-cols-2 gap-5 md:grid-cols-3">
-            <Stat label={`Omzet ${monthLabel(month)}`} value={rupiah(total)} note="Hanya dari file yang sudah diterima" />
-            <Stat label="Transaksi" value={count.toLocaleString('id-ID')} />
-            <Stat label="Tenan sudah mengirim" value={`${rekap.length} dari ${tenants.filter((t) => t.active).length}`} />
+          {/* Pertanyaan pertama pengelola: siapa yang sudah mengirim, dan berapa totalnya. */}
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-x-10 gap-y-3">
+            <p>
+              <span className="sign block text-6xl leading-tight">
+                {rekap.length} dari {tenants.filter((t) => t.active).length}
+              </span>
+              <span className="text-lg font-medium">Tenan sudah mengirim</span>
+            </p>
+            <p className="sm:text-right">
+              <span className="sign block text-5xl leading-tight break-words">{rupiah(total)}</span>
+              <span className="font-medium">Omzet {monthLabel(month)}</span>
+              <span className="tnum block text-muted">{count.toLocaleString('id-ID')} transaksi, hanya dari file yang sudah diterima</span>
+            </p>
           </div>
-          <div className="overflow-x-auto bg-surface">
-            <table className="tnum w-full text-left">
-              <thead className="border-b border-line text-sm text-muted">
+          <div className={`overflow-x-auto ${sheet}`}>
+            <table className="tnum w-full min-w-xl text-left">
+              <thead className="border-b border-line text-muted">
                 <tr>
                   <th className="p-3 font-medium">Tenan</th>
                   <th className="p-3 text-right font-medium">Omzet</th>
@@ -93,11 +102,11 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
                     return (
                       <tr key={t.id}>
                         <td className="p-3">
-                          <span className="font-medium">{t.name}</span> <span className="text-sm text-muted">{t.unit}</span>
+                          <span className="font-semibold">{t.name}</span> <span className="whitespace-nowrap text-muted">{t.unit}</span>
                         </td>
-                        <td className="p-3 text-right">{r ? rupiah(r.net) : '-'}</td>
+                        <td className="p-3 text-right whitespace-nowrap">{r ? rupiah(r.net) : '-'}</td>
                         <td className="p-3 text-right">{r ? r.transactions : '-'}</td>
-                        <td className={`p-3 ${r ? 'text-muted' : 'font-semibold text-warn'}`}>{r ? dateTime(r.importedAt) : 'Belum mengirim'}</td>
+                        <td className="p-3 whitespace-nowrap text-muted">{r ? dateTime(r.importedAt) : <Chip>Belum mengirim</Chip>}</td>
                       </tr>
                     )
                   })}
@@ -116,20 +125,18 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
             Tenan yang memakai perangkat sendiri butuh file penyiapan. Berikan filenya beserta PIN, lalu pilih Perangkat tenan saat membuka aplikasi di perangkat itu. Minta pemilik mengganti PIN setelah masuk.
           </p>
           {sorted.length === 0 && <Empty title="Belum ada tenan.">Tambahkan tenan pertama untuk mulai.</Empty>}
-          <ul className="space-y-1">
+          <ul className={`divide-y divide-line ${sheet} ${sorted.length === 0 ? 'hidden' : ''}`}>
             {sorted.map((t) => (
-              <li key={t.id} className={`flex min-h-16 flex-wrap items-stretch bg-surface ${t.active ? '' : 'opacity-60'}`}>
-                <span className="flex w-24 items-center justify-center font-sign text-2xl font-semibold" style={{ background: t.color, color: readableOn(t.color) }}>
-                  {t.unit}
-                </span>
-                <span className="min-w-40 flex-1 self-center px-4 py-2">
-                  <span className="block font-medium">{t.name}</span>
-                  <span className="text-sm text-muted">
+              <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3">
+                <UnitTag unit={t.unit} color={t.color} className="min-w-20 px-2 py-2 text-xl" />
+                <span className="min-w-40 flex-1 break-words">
+                  <span className="block font-semibold">{t.name}</span>
+                  <span className="text-muted">
                     {t.category}, lantai {t.floor}
                     {!t.active && ', nonaktif'}
                   </span>
                 </span>
-                <span className="flex flex-wrap items-center gap-1 p-2">
+                <span className="flex flex-wrap items-center gap-1">
                   <Button
                     onClick={async () => {
                       try {
@@ -145,6 +152,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
                   </Button>
                   <Button onClick={() => setPinTenant(t)}>Reset PIN</Button>
                   <Button
+                    tone={t.active ? 'danger' : 'plain'}
                     onClick={async () => {
                       try {
                         await repo.setTenantActive(ctx, t.id, !t.active)
@@ -163,7 +171,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
         </section>
 
         <section>
-          <h2 className="mb-1 font-sign text-3xl font-semibold">Perangkat ini</h2>
+          <h2 className="sign mb-1 text-3xl">Perangkat ini</h2>
           <p className="mb-3 max-w-prose text-muted">{DEMO_ENABLED ? 'Pulihkan backup tenan ke perangkat baru, atau kembalikan perangkat ini ke data contoh.' : 'Pulihkan backup tenan ke perangkat baru, atau kosongkan perangkat ini.'}</p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -193,7 +201,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
           <p>
             Data {restoring.tenant.name} di perangkat ini akan diganti dengan file dari {dateTime(restoring.exportedAt)} ({restoring.sales.length} transaksi).
           </p>
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
             <Button onClick={() => setRestoring(null)}>Jangan pulihkan</Button>
             <Button
               tone="danger"
@@ -273,13 +281,13 @@ function TenantForm({ ctx, onClose }: { ctx: repo.Ctx; onClose: () => void }) {
             <Input type="color" value={draft.color} onChange={set('color')} className="p-1" />
           </Field>
           <Field label="PIN pemilik" hint="4 sampai 6 angka">
-            <Input required type="password" inputMode="numeric" value={draft.ownerPin} onChange={set('ownerPin')} />
+            <PinInput required inputMode="numeric" value={draft.ownerPin} onChange={set('ownerPin')} />
           </Field>
           <Field label="PIN kasir" hint="4 sampai 6 angka">
-            <Input required type="password" inputMode="numeric" value={draft.cashierPin} onChange={set('cashierPin')} />
+            <PinInput required inputMode="numeric" value={draft.cashierPin} onChange={set('cashierPin')} />
           </Field>
         </div>
-        <Button tone="primary" type="submit" className="w-full">
+        <Button tone="primary" type="submit" className="min-h-12 w-full">
           Tambah tenan
         </Button>
       </form>
@@ -307,7 +315,7 @@ function ResetPin({ ctx, tenant, onClose }: { ctx: repo.Ctx; tenant: Tenant; onC
         }}
       >
         <Field label="PIN baru" hint="4 sampai 6 angka">
-          <Input autoFocus type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} />
+          <PinInput autoFocus inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} />
         </Field>
         <Button tone="primary" type="submit" className="mt-3 w-full">
           Reset PIN
