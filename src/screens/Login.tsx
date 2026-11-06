@@ -1,16 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import * as repo from '../data/repo'
-import { DEMO_PINS } from '../data/seed'
+import { DEMO_PINS } from '../data/demo'
 import type { Tenant } from '../domain/schemas'
 import { reportError, useSession } from '../store'
-import { Button, readableOn } from '../ui/kit'
+import { Button, pickJsonFile, readableOn } from '../ui/kit'
+import { installTenantFile } from './Setup'
 
 type Target = { kind: 'tenant'; tenant: Tenant } | { kind: 'mall' }
 
 /** Layar masuk dibuat seperti papan direktori mall: pilih tenan per lantai. */
 export function Login() {
   const tenants = useLiveQuery(() => repo.listTenants(), [])
+  const hasMall = useLiveQuery(() => repo.hasMallAccount(), [])
   const [target, setTarget] = useState<Target | null>(null)
 
   if (target) return <PinScreen target={target} onBack={() => setTarget(null)} />
@@ -23,6 +25,12 @@ export function Login() {
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-12">
         <h1 className="font-sign text-5xl leading-none font-semibold sm:text-7xl">Direktori tenan</h1>
         <p className="mt-3 text-lg text-white/80">Pilih toko Anda untuk mulai berjualan.</p>
+
+        {tenants && active.length === 0 && (
+          <p className="mt-8 border border-dashed border-white/40 p-6">
+            {hasMall ? 'Belum ada tenan. Masuk sebagai pengelola mall untuk menambahkannya.' : 'Belum ada tenan aktif di perangkat ini.'}
+          </p>
+        )}
 
         <div className="mt-8 space-y-8">
           {floors.map((floor) => (
@@ -57,9 +65,14 @@ export function Login() {
           ))}
         </div>
 
-        <div className="mt-10 border-t border-white/25 pt-5">
-          <button type="button" onClick={() => setTarget({ kind: 'mall' })} className="min-h-11 font-medium underline underline-offset-4">
-            Masuk sebagai pengelola mall
+        <div className="mt-10 flex flex-wrap gap-x-8 border-t border-white/25 pt-5">
+          {hasMall && (
+            <button type="button" onClick={() => setTarget({ kind: 'mall' })} className="min-h-11 font-medium underline underline-offset-4">
+              Masuk sebagai pengelola mall
+            </button>
+          )}
+          <button type="button" onClick={() => pickJsonFile(installTenantFile, reportError)} className="min-h-11 font-medium underline underline-offset-4">
+            Pasang tenan dari file
           </button>
         </div>
       </div>
@@ -104,7 +117,7 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
 
   const color = target.kind === 'tenant' ? target.tenant.color : '#FFC629'
   const title = target.kind === 'tenant' ? target.tenant.name : 'Pengelola mall'
-  const demoHint = target.kind === 'mall' ? `PIN contoh: ${DEMO_PINS.mall}` : `PIN contoh: pemilik ${DEMO_PINS.owner}, kasir ${DEMO_PINS.cashier}`
+  const demoHint = DEMO_PINS && (target.kind === 'mall' ? `PIN contoh: ${DEMO_PINS.mall}` : `PIN contoh: pemilik ${DEMO_PINS.owner}, kasir ${DEMO_PINS.cashier}`)
 
   return (
     <main className="grid min-h-full bg-rail text-white md:grid-cols-[1fr_26rem]">
@@ -156,7 +169,7 @@ function PinScreen({ target, onBack }: { target: Target; onBack: () => void }) {
             Masuk
           </Button>
         </div>
-        <p className="text-center text-sm text-white/80">{selected ? demoHint : 'Pilih akun dulu.'}</p>
+        <p className="min-h-5 text-center text-sm text-white/80">{selected ? demoHint : 'Pilih akun dulu.'}</p>
       </section>
     </main>
   )
