@@ -91,6 +91,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
   const signOut = useSession((s) => s.signOut)
   const tenants = useLiveQuery(() => repo.listTenants(), []) ?? []
   const months = useLiveQuery(() => repo.listRekapMonths(), []) ?? []
+  const lastBackupAt = useLiveQuery(() => repo.lastMallBackupAt(ctx), [ctx])
   const [chosen, setChosen] = useState<string | null>(null)
   const month = chosen ?? months[0] ?? repo.previousMonth()
   const rekap = useLiveQuery(() => repo.listRekap(month), [month]) ?? []
@@ -128,6 +129,16 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
     const rows = [['Unit', 'Tenan', 'Bulan', 'Omzet', 'Transaksi', 'Tunai', 'QRIS', 'Kartu'], ...rekap.map((r) => [r.unit, r.tenantName, r.month, r.net, r.transactions, r.byMethod.cash, r.byMethod.qris, r.byMethod.card])]
     const cell = (v: string | number) => `"${String(v).replaceAll('"', '""').replace(/^([=+\-@])/, "'$1")}"`
     downloadFile(`rekap-mall-${month}.csv`, '﻿' + rows.map((r) => r.map(cell).join(',')).join('\r\n'), 'text/csv')
+  }
+
+  const backup = async () => {
+    try {
+      const data = await repo.exportMallBackup(ctx)
+      downloadFile(`backup-mall-${data.exportedAt.slice(0, 10)}.json`, JSON.stringify(data))
+      ok('File backup diunduh. Simpan di tempat aman di luar perangkat ini, karena file ini memuat akun semua tenan.')
+    } catch (err) {
+      reportError(err)
+    }
   }
 
   return (
@@ -211,8 +222,15 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
 
         <section className="mt-12 border-t border-line pt-5">
           <h2 className="sign mb-1 text-2xl">Perangkat ini</h2>
+          <p className="mb-2 max-w-prose text-muted">
+            Daftar tenan dan rekap hanya ada di perangkat ini. Kalau perangkat rusak atau data browser terhapus, data hanya bisa kembali dari file backup.
+            {lastBackupAt ? ` Backup terakhir ${dateTime(lastBackupAt)}.` : ' Belum pernah dibackup.'} Produk dan transaksi tenan tidak ikut, karena tiap pemilik membuat backup tokonya sendiri.
+          </p>
           <p className="mb-3 max-w-prose text-muted">{DEMO_ENABLED ? 'Pulihkan backup tenan ke perangkat baru, atau kembalikan perangkat ini ke data contoh.' : 'Pulihkan backup tenan ke perangkat baru, atau kosongkan perangkat ini.'}</p>
           <div className="flex flex-wrap gap-2">
+            <Button tone="primary" onClick={backup}>
+              Unduh backup
+            </Button>
             <Button
               onClick={() =>
                 pickJsonFile((raw) => {

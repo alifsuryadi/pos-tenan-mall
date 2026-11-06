@@ -181,3 +181,41 @@ export const backupSchema = z
   // File dari luar tidak boleh membawa akun pengelola mall.
   .refine((b) => b.tenant.id !== 'mall' && b.users.every((u) => u.role !== 'mall'), 'File berisi akun yang tidak diizinkan')
 export type Backup = z.infer<typeof backupSchema>
+
+export const storedRekapSchema = rekapSchema.extend({ id, importedAt: iso })
+
+const hasDuplicates = (keys: string[]) => new Set(keys).size !== keys.length
+
+/**
+ * Backup perangkat pengelola mall. Skema ini sengaja terpisah dari backupSchema: nilai `kind` yang berbeda
+ * membuat kedua jenis file saling tertolak, dan backupSchema tetap menolak akun pengelola mall.
+ * Produk, transaksi, dan shift tidak termasuk karena itu data milik tenan.
+ */
+export const mallBackupSchema = z
+  .object({
+    kind: z.literal('backup-mall'),
+    version: z.literal(1),
+    exportedAt: iso,
+    users: z.array(userSchema),
+    tenants: z.array(tenantSchema),
+    settings: z.array(settingsSchema),
+    rekap: z.array(storedRekapSchema),
+    audit: z.array(auditSchema),
+  })
+  .refine((b) => b.users.some((u) => u.role === 'mall'), 'File tidak memuat akun pengelola mall')
+  .refine((b) => {
+    const tenantIds = new Set(b.tenants.map((t) => t.id))
+    return (
+      !tenantIds.has('mall') &&
+      b.users.every((u) => (u.role === 'mall' ? u.tenantId === 'mall' : tenantIds.has(u.tenantId))) &&
+      b.settings.every((s) => tenantIds.has(s.tenantId)) &&
+      b.audit.every((a) => a.tenantId === 'mall')
+    )
+  }, 'Isi file backup tidak cocok dengan daftar tenan')
+  .refine((b) => b.rekap.every((r) => r.id === `${r.tenantId}:${r.month}`), 'Penanda rekap tidak valid')
+  .refine(
+    (b) =>
+      ![b.users.map((u) => u.id), b.tenants.map((t) => t.id), b.settings.map((s) => s.tenantId), b.rekap.map((r) => r.id), b.audit.map((a) => a.id)].some(hasDuplicates),
+    'File berisi data ganda',
+  )
+export type MallBackup = z.infer<typeof mallBackupSchema>
