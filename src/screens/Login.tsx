@@ -4,7 +4,7 @@ import * as repo from '../data/repo'
 import { DEMO_PINS } from '../data/demo'
 import type { Tenant } from '../domain/schemas'
 import { reportError, useSession } from '../store'
-import { Button, RevealButton, Segmented, UnitTag, pickJsonFile, sheet } from '../ui/kit'
+import { Button, FloorLabel, RevealButton, Segmented, UnitTag, pickJsonFile, sheet } from '../ui/kit'
 import { installTenantFile } from './Setup'
 
 type Target = { kind: 'tenant'; tenant: Tenant } | { kind: 'mall' }
@@ -35,11 +35,7 @@ export function Login() {
         <div className="mt-8 space-y-6">
           {floors.map((floor) => (
             <section key={floor} className="grid gap-x-4 gap-y-2 sm:grid-cols-[5rem_1fr]">
-              {/* Angka lantai dibaca seperti papan lift. */}
-              <h2 className="flex items-baseline gap-2 sm:block">
-                <span className="text-muted">Lantai</span>
-                <span className="sign block text-4xl leading-none sm:text-7xl">{floor}</span>
-              </h2>
+              <FloorLabel floor={floor} />
               <ul className={`self-start divide-y divide-line ${sheet}`}>
                 {active
                   .filter((t) => t.floor === floor)

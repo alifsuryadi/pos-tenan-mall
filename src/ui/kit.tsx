@@ -104,6 +104,16 @@ export function UnitTag({ unit, color, className = 'px-2 py-1 text-lg' }: { unit
   )
 }
 
+/** Angka lantai dibaca seperti papan lift, dipakai di direktori dan papan rekap. */
+export function FloorLabel({ floor }: { floor: number }) {
+  return (
+    <h3 className="flex items-baseline gap-2 sm:block">
+      <span className="text-muted">Lantai</span>
+      <span className="sign block text-4xl leading-none sm:text-7xl">{floor}</span>
+    </h3>
+  )
+}
+
 export function Chip({ children }: { children: ReactNode }) {
   return <span className="inline-block rounded-[2px] bg-warn px-1.5 font-semibold whitespace-nowrap text-ink">{children}</span>
 }
