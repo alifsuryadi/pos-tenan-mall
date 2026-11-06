@@ -50,7 +50,7 @@ jobs:
       - name: Kemas hasil build
         run: cd dist && zip -r "../pos-tenan-mall-$TAG.zip" .
 
-      # Sengaja dikunci sampai data dan PIN contoh dihapus dari aplikasi.
+      # Sengaja dikunci sampai domain final terpasang.
       - name: Kirim ke Cloudflare Pages (produksi)
         if: vars.ENABLE_PRODUCTION_DEPLOY == 'true'
         env:

@@ -178,4 +178,6 @@ export const backupSchema = z
       ),
     'Isi file backup tercampur dengan data tenan lain',
   )
+  // File dari luar tidak boleh membawa akun pengelola mall.
+  .refine((b) => b.tenant.id !== 'mall' && b.users.every((u) => u.role !== 'mall'), 'File berisi akun yang tidak diizinkan')
 export type Backup = z.infer<typeof backupSchema>

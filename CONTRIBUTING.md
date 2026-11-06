@@ -50,11 +50,10 @@ Selama secret belum ada, deploy staging dilewati tanpa membuat CI gagal.
 
 ### Mengaktifkan produksi
 
-Deploy produksi mati secara bawaan, karena aplikasi masih memuat data dan PIN contoh. Sebelum mengaktifkannya:
+Deploy produksi mati secara bawaan. Build produksi tidak memuat data dan PIN contoh, yang hanya aktif di lokal dan staging lewat `VITE_DEMO_DATA=true`. Sebelum mengaktifkannya:
 
-1. Hapus data contoh dan petunjuk PIN di layar masuk.
-2. Pasang domain final. Data tersimpan per domain, jadi data di perangkat tenan tidak ikut pindah kalau domainnya berganti.
-3. Tambahkan variable repo `ENABLE_PRODUCTION_DEPLOY` dengan nilai `true`.
+1. Pasang domain final. Data tersimpan per domain, jadi data di perangkat tenan tidak ikut pindah kalau domainnya berganti.
+2. Tambahkan variable repo `ENABLE_PRODUCTION_DEPLOY` dengan nilai `true`.
 
 ## Merilis versi baru
 

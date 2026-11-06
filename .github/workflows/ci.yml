@@ -33,6 +33,9 @@ jobs:
 
       - name: Periksa tipe dan build
         run: npm run build
+        env:
+          # Hanya staging yang memuat data dan PIN contoh.
+          VITE_DEMO_DATA: ${{ github.ref_name == 'dev' && 'true' || 'false' }}
 
       # dev menghasilkan paket staging, main menghasilkan paket produksi.
       - name: Simpan hasil build

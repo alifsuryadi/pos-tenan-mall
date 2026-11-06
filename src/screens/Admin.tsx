@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import * as repo from '../data/repo'
-import { seedIfEmpty } from '../data/seed'
+import { prepareDevice } from '../data/boot'
+import { DEMO_ENABLED } from '../data/demo'
 import type { Backup, Tenant } from '../domain/schemas'
 import { reportError, useSession, useToast } from '../store'
-import { Button, Field, Input, Modal, PageTitle, Select, Stat, dateTime, downloadFile, monthLabel, pickJsonFile, readableOn, rupiah } from '../ui/kit'
+import { Button, Empty, Field, Input, Modal, PageTitle, Select, Stat, dateTime, downloadFile, monthLabel, pickJsonFile, readableOn, rupiah } from '../ui/kit'
 
 export function Admin({ ctx }: { ctx: repo.Ctx }) {
   const signOut = useSession((s) => s.signOut)
@@ -109,6 +110,10 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
               Tambah tenan
             </Button>
           </PageTitle>
+          <p className="mb-3 max-w-prose text-muted">
+            Tenan yang memakai perangkat sendiri butuh file penyiapan. Berikan filenya beserta PIN, lalu pilih Perangkat tenan saat membuka aplikasi di perangkat itu. Minta pemilik mengganti PIN setelah masuk.
+          </p>
+          {sorted.length === 0 && <Empty title="Belum ada tenan.">Tambahkan tenan pertama untuk mulai.</Empty>}
           <ul className="space-y-1">
             {sorted.map((t) => (
               <li key={t.id} className={`flex min-h-16 flex-wrap items-stretch bg-surface ${t.active ? '' : 'opacity-60'}`}>
@@ -122,7 +127,20 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
                     {!t.active && ', nonaktif'}
                   </span>
                 </span>
-                <span className="flex items-center gap-1 p-2">
+                <span className="flex flex-wrap items-center gap-1 p-2">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const setup = await repo.exportTenantSetup(ctx, t.id)
+                        downloadFile(`penyiapan-${t.unit}.json`, JSON.stringify(setup))
+                        ok(`File penyiapan ${t.name} diunduh. Pasang di perangkat tenan.`)
+                      } catch (err) {
+                        reportError(err)
+                      }
+                    }}
+                  >
+                    Unduh file penyiapan
+                  </Button>
                   <Button onClick={() => setPinTenant(t)}>Reset PIN</Button>
                   <Button
                     onClick={async () => {
@@ -144,7 +162,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
 
         <section>
           <h2 className="mb-1 font-sign text-3xl font-semibold">Perangkat ini</h2>
-          <p className="mb-3 max-w-prose text-muted">Pulihkan backup tenan ke perangkat baru, atau kembalikan perangkat ini ke data contoh.</p>
+          <p className="mb-3 max-w-prose text-muted">{DEMO_ENABLED ? 'Pulihkan backup tenan ke perangkat baru, atau kembalikan perangkat ini ke data contoh.' : 'Pulihkan backup tenan ke perangkat baru, atau kosongkan perangkat ini.'}</p>
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() =>
@@ -194,7 +212,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
       )}
       {erasing && (
         <Modal title="Hapus semua data?" onClose={() => setErasing(false)}>
-          <p>Semua tenan, penjualan, dan rekap di perangkat ini akan dihapus permanen, lalu diganti dengan data contoh. Tindakan ini tidak bisa dibatalkan.</p>
+          <p>Semua tenan, penjualan, dan rekap di perangkat ini akan dihapus permanen{DEMO_ENABLED ? ', lalu diganti dengan data contoh' : ', dan perangkat harus disiapkan ulang'}. Tindakan ini tidak bisa dibatalkan.</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button onClick={() => setErasing(false)}>Jangan hapus</Button>
             <Button
@@ -202,7 +220,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
               onClick={async () => {
                 try {
                   await repo.eraseDevice()
-                  await seedIfEmpty()
+                  await prepareDevice()
                   signOut()
                 } catch (err) {
                   reportError(err)
