@@ -47,6 +47,18 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+  docker:
+    name: Build image Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build image
+        run: docker build -t pos-tenan-mall:ci .
+
+      - name: Jalankan dan periksa image
+        run: bash docker/smoke-test.sh pos-tenan-mall:ci
+
   deploy-staging:
     name: Deploy staging
     needs: verify
