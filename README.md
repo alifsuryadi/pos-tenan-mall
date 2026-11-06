@@ -2,6 +2,8 @@
 
 Kasir PWA untuk tenan mall. Semua data tersimpan di browser perangkat (IndexedDB), tanpa server.
 
+**Coba versi staging:** https://dev.pos-tenan-mall.pages.dev (memakai data dan PIN contoh di bawah)
+
 ## Menjalankan
 
 ```bash
@@ -51,3 +53,7 @@ Lihat [CONTRIBUTING.md](CONTRIBUTING.md).
 - QRIS dan kartu dicatat manual, tidak terhubung ke penyedia pembayaran.
 - Void dan refund berlaku untuk seluruh transaksi.
 - Varian dibuat sebagai produk terpisah (misalnya per ukuran).
+
+## Lisensi
+
+[MIT](LICENSE)

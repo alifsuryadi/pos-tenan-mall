@@ -26,7 +26,7 @@ hotfix/* ───────────────────────�
 | CI | PR ke `main` atau `dev`, dan push ke keduanya | Tes, pemeriksaan tipe, dan build |
 | CI (push) | Push ke `dev` | Artefak `pos-staging-<commit>` disimpan 14 hari, lalu deploy ke staging |
 | CI (push) | Push ke `main` | Artefak `pos-production-<commit>`, disimpan 14 hari |
-| Release | Push tag `vX.Y.Z` | Deploy ke produksi jika diaktifkan, lalu GitHub Release berisi zip hasil build |
+| Release | Push tag `vX.Y.Z` | GitHub Release berisi zip hasil build, lalu deploy ke produksi jika diaktifkan |
 
 ## Deploy ke Cloudflare Pages
 
@@ -47,6 +47,8 @@ Penyiapan satu kali:
 3. Di **Settings > Secrets and variables > Actions** pada repo GitHub, tambahkan secret `CLOUDFLARE_API_TOKEN` dan `CLOUDFLARE_ACCOUNT_ID`.
 
 Selama secret belum ada, deploy staging dilewati tanpa membuat CI gagal.
+
+Setiap deploy tercatat di panel **Deployments** pada halaman repo. Panel ini baru muncul setelah deploy pertama yang memakai `environment`.
 
 ### Mengaktifkan produksi
 
