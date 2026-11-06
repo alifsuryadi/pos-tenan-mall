@@ -112,6 +112,143 @@ describe('backup', () => {
   })
 })
 
+describe('backup pengelola mall', () => {
+  const byId = <T extends { id: string }>(rows: T[]) => [...rows].sort((a, b) => a.id.localeCompare(b.id))
+  const RESTORE = 'Pulihkan backup mall'
+
+  async function snapshot() {
+    return {
+      users: byId(await db.users.toArray()),
+      tenants: byId(await db.tenants.toArray()),
+      settings: (await db.settings.toArray()).sort((a, b) => a.tenantId.localeCompare(b.tenantId)),
+      rekap: byId(await db.rekap.toArray()),
+      audit: byId((await db.audit.where('tenantId').equals('mall').toArray()).filter((a) => a.action !== RESTORE)),
+    }
+  }
+
+  /** Perangkat mall dengan satu tenan dan satu rekap yang sudah diterima. */
+  async function mallDevice() {
+    const mall = await repo.setupMall('123456')
+    const shop = await makeTenant('L1-01')
+    await repo.importRekap(mall, await repo.exportRekap(shop.asOwner, '2026-10'))
+    return { mall, shop }
+  }
+
+  /** Lewat JSON, seperti file sungguhan yang diunduh lalu dipilih lagi. */
+  const throughFile = (data: unknown) => JSON.parse(JSON.stringify(data))
+
+  it('ekspor lalu pulihkan di perangkat kosong menghasilkan data yang sama', async () => {
+    const { mall } = await mallDevice()
+    const file = throughFile(await repo.exportMallBackup(mall))
+    const before = await snapshot()
+    expect(before.users.map((u) => u.role).sort()).toEqual(['cashier', 'mall', 'owner'])
+    expect(before.rekap).toHaveLength(1)
+    expect(before.audit.some((a) => a.action === 'Buat backup mall')).toBe(true)
+
+    await repo.eraseDevice()
+    const ctx = await repo.restoreMallBackup(repo.parseMallBackup(file), '123456')
+    expect(ctx).toMatchObject({ tenantId: 'mall', role: 'mall', userId: mall.userId })
+    expect(await snapshot()).toEqual(before)
+    expect(await repo.lastMallBackupAt(ctx)).toBe(before.audit.find((a) => a.action === 'Buat backup mall')!.at)
+  })
+
+  it('setelah dipulihkan, PIN lama, file penyiapan, dan reset PIN tetap berfungsi', async () => {
+    const { mall, shop } = await mallDevice()
+    const file = throughFile(await repo.exportMallBackup(mall))
+    await repo.eraseDevice()
+    const ctx = await repo.restoreMallBackup(repo.parseMallBackup(file), '123456')
+
+    await expect(repo.login(mall.userId, '000000')).rejects.toThrow('PIN salah')
+    expect((await repo.login(mall.userId, '123456')).role).toBe('mall')
+    const setup = await repo.exportTenantSetup(ctx, shop.tenant.id)
+    expect(setup.users).toHaveLength(2)
+    await repo.changePin(ctx, shop.asOwner.userId, '4444')
+    expect((await repo.login(shop.asOwner.userId, '4444')).role).toBe('owner')
+  })
+
+  it('produk dan transaksi tenan tidak ikut ke file', async () => {
+    const { mall, shop } = await mallDevice()
+    await repo.openShift(shop.asCashier, 0)
+    await repo.completeSale(shop.asCashier, { lines: [line(shop.product, 1)], discount: noDiscount, method: 'qris', paid: 0, reference: '' })
+    const file = throughFile(await repo.exportMallBackup(mall))
+    for (const key of ['products', 'sales', 'shifts', 'stockMoves', 'held']) expect(file).not.toHaveProperty(key)
+    expect(file.audit.every((a: { tenantId: string }) => a.tenantId === 'mall')).toBe(true)
+  })
+
+  it('tenan tidak bisa mengekspor', async () => {
+    const { shop } = await mallDevice()
+    await expect(repo.exportMallBackup(shop.asOwner)).rejects.toThrow('tidak punya akses')
+    await expect(repo.exportMallBackup(shop.asCashier)).rejects.toThrow('tidak punya akses')
+    expect((await db.audit.toArray()).some((a) => a.action === 'Buat backup mall')).toBe(false)
+  })
+
+  it('file tenan ditolak sebagai backup mall', async () => {
+    const { mall, shop } = await mallDevice()
+    const tenantBackup = throughFile(await repo.exportBackup(shop.asOwner))
+    const setup = throughFile(await repo.exportTenantSetup(mall, shop.tenant.id))
+    const rekap = throughFile(await repo.exportRekap(shop.asOwner, '2026-10'))
+    expect(() => repo.parseMallBackup(tenantBackup)).toThrow('milik tenan')
+    expect(() => repo.parseMallBackup(setup)).toThrow('milik tenan')
+    expect(() => repo.parseMallBackup({ ...tenantBackup, kind: 'backup-mall' })).toThrow('rusak')
+    expect(() => repo.parseMallBackup(rekap)).toThrow('rekap tenan')
+    expect(() => repo.parseMallBackup(null)).toThrow('bukan backup pengelola mall')
+  })
+
+  it('file mall ditolak sebagai file tenan, juga kalau jenisnya dipalsukan', async () => {
+    const { mall } = await mallDevice()
+    const file = throughFile(await repo.exportMallBackup(mall))
+    expect(() => repo.parseBackup(file)).toThrow('bukan backup tenan')
+    expect(() => repo.parseBackup({ ...file, kind: 'backup-tenan' })).toThrow('bukan backup')
+    await expect(repo.importRekap(mall, file)).rejects.toThrow('bukan file rekap')
+  })
+
+  it('file yang dipalsukan atau rusak ditolak', async () => {
+    const { mall } = await mallDevice()
+    const file = throughFile(await repo.exportMallBackup(mall))
+    const mallUser = file.users.find((u: { role: string }) => u.role === 'mall')
+    const shopUser = file.users.find((u: { role: string }) => u.role === 'owner')
+    const forgeries = [
+      { ...file, version: 2 },
+      { ...file, users: file.users.filter((u: { role: string }) => u.role !== 'mall') },
+      { ...file, users: [...file.users, { ...mallUser, id: 'x', tenantId: file.tenants[0].id }] },
+      { ...file, users: [...file.users, { ...shopUser, id: 'x', tenantId: 'mall' }] },
+      { ...file, users: [...file.users, { ...shopUser, id: 'x', tenantId: 'tidak-ada' }] },
+      { ...file, users: [...file.users, shopUser] },
+      { ...file, tenants: [...file.tenants, { ...file.tenants[0], id: 'mall' }] },
+      { ...file, rekap: [{ ...file.rekap[0], id: 'lain' }] },
+      { ...file, audit: [{ ...file.audit[0], tenantId: file.tenants[0].id }] },
+    ]
+    for (const forged of forgeries) expect(() => repo.parseMallBackup(forged)).toThrow('rusak')
+  })
+
+  it('hanya PIN akun mall yang bisa memulihkan, dan PIN salah tidak mengubah apa pun', async () => {
+    const { mall } = await mallDevice()
+    const file = repo.parseMallBackup(throughFile(await repo.exportMallBackup(mall)))
+    await repo.eraseDevice()
+    await expect(repo.restoreMallBackup(file, '000000')).rejects.toThrow('PIN pengelola mall salah')
+    await expect(repo.restoreMallBackup(file, '1111')).rejects.toThrow('PIN pengelola mall salah')
+    expect(await repo.isDeviceEmpty()).toBe(true)
+  })
+
+  it('pemulihan tidak menimpa perangkat yang sudah berisi data', async () => {
+    const { mall } = await mallDevice()
+    const file = repo.parseMallBackup(throughFile(await repo.exportMallBackup(mall)))
+    await makeTenant('L1-02')
+    const before = await snapshot()
+    await expect(repo.restoreMallBackup(file, '123456')).rejects.toThrow('sudah berisi data')
+    expect(await snapshot()).toEqual(before)
+  })
+
+  it('perangkat tanpa akun tetapi masih punya data lain dianggap berisi', async () => {
+    const { mall } = await mallDevice()
+    const file = repo.parseMallBackup(throughFile(await repo.exportMallBackup(mall)))
+    await db.users.clear()
+    expect(await repo.isDeviceEmpty()).toBe(true)
+    await expect(repo.restoreMallBackup(file, '123456')).rejects.toThrow('sudah berisi data')
+    expect(await db.users.count()).toBe(0)
+  })
+})
+
 describe('penyiapan perangkat', () => {
   it('akun mall hanya bisa dibuat di perangkat kosong', async () => {
     const ctx = await repo.setupMall('123456')
