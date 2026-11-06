@@ -25,6 +25,22 @@ Saat `npm run dev` dan di staging, perangkat kosong otomatis terisi empat tenan 
 
 Build produksi tidak memuat data ini. Data contoh hanya aktif jika `VITE_DEMO_DATA=true`.
 
+## Menjalankan dengan Docker
+
+```bash
+docker build -t pos-tenan-mall .
+```
+
+```bash
+docker run --rm -p 8080:8080 pos-tenan-mall
+```
+
+Buka http://localhost:8080. Image ini tidak memuat data contoh, jadi aplikasi mulai dari layar penyiapan perangkat. Untuk memuat data contoh, tambahkan `--build-arg VITE_DEMO_DATA=true` saat build.
+
+Setiap rilis juga menerbitkan image `ghcr.io/alifsuryadi/pos-tenan-mall`.
+
+Container ini hanya menyajikan file aplikasi. Data tetap tersimpan di browser tiap perangkat, bukan di container. Di luar `localhost`, fitur offline hanya aktif lewat HTTPS, jadi pasang di belakang proxy yang menyediakan HTTPS.
+
 ## Menyiapkan perangkat sungguhan
 
 1. Di perangkat mall, pilih **Perangkat pengelola mall** dan buat PIN.

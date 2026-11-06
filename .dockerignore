@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+.agents
+.env*
+node_modules
+dist
+dev-dist
+docs
+video
+Dockerfile
+.dockerignore
+*.md
