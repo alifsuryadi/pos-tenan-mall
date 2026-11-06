@@ -6,12 +6,14 @@
 import { computeTotals, dayKey, expectedCash, monthKey, pad2, summarize } from '../domain/calc'
 import {
   backupSchema,
+  mallBackupSchema,
   productSchema,
   rekapSchema,
   tenantSchema,
   type Backup,
   type Discount,
   type Held,
+  type MallBackup,
   type PaymentMethod,
   type Product,
   type Rekap,
@@ -525,7 +527,10 @@ export async function exportBackup(ctx: Ctx): Promise<Backup> {
   return backup
 }
 
+const fileKind = (raw: unknown) => (raw as { kind?: unknown } | null)?.kind
+
 export function parseBackup(raw: unknown): Backup {
+  if (fileKind(raw) === 'backup-mall') throw new UserError('File ini backup pengelola mall, bukan backup tenan.')
   const parsed = backupSchema.safeParse(raw)
   if (!parsed.success) throw new UserError('File ini bukan backup tenan yang valid.')
   return parsed.data
@@ -553,6 +558,87 @@ export async function restoreBackup(ctx: Ctx, backup: Backup): Promise<void> {
     await db.settings.put(backup.settings)
     await log(ctx, 'Pulihkan backup', `${backup.tenant.name}, file ${backup.exportedAt}`)
   })
+}
+
+// ---------- Backup perangkat pengelola mall ----------
+
+const MALL_BACKUP_ACTION = 'Buat backup mall'
+
+/**
+ * Memuat semua yang dibutuhkan layar pengelola: akun mall, tenan beserta akun dan pengaturannya
+ * (untuk file penyiapan dan reset PIN), rekap yang diterima, dan log pengelola.
+ * Produk dan transaksi tidak ikut. Pada perangkat bersama, tiap pemilik membuat backup tokonya sendiri.
+ */
+export async function exportMallBackup(ctx: Ctx): Promise<MallBackup> {
+  requireRole(ctx, 'mall')
+  return db.transaction('rw', [db.tenants, db.users, db.settings, db.rekap, db.audit], async () => {
+    const tenants = await db.tenants.toArray()
+    const tenantIds = new Set(tenants.map((t) => t.id))
+    const rekap = await db.rekap.toArray()
+    // Dicatat sebelum audit dibaca, supaya waktu backup terakhir ikut terbawa ke file.
+    await log(ctx, MALL_BACKUP_ACTION, `${tenants.length} tenan, ${rekap.length} rekap`)
+    const parsed = mallBackupSchema.safeParse({
+      kind: 'backup-mall',
+      version: 1,
+      exportedAt: now(),
+      users: (await db.users.toArray()).filter((u) => u.tenantId === 'mall' || tenantIds.has(u.tenantId)),
+      tenants,
+      settings: (await db.settings.toArray()).filter((s) => tenantIds.has(s.tenantId)),
+      rekap,
+      audit: await db.audit.where('tenantId').equals('mall').toArray(),
+    })
+    // File yang tidak bisa dipulihkan lebih berbahaya daripada gagal mengunduh.
+    if (!parsed.success) throw new UserError(`Backup tidak dibuat: ${parsed.error.issues[0].message}.`)
+    return parsed.data
+  })
+}
+
+export function parseMallBackup(raw: unknown): MallBackup {
+  const kind = fileKind(raw)
+  if (kind === 'backup-tenan') throw new UserError('File ini milik tenan, bukan backup pengelola mall. Untuk memasangnya, pilih Perangkat tenan.')
+  if (kind === 'rekap-tenan') throw new UserError('File ini rekap tenan, bukan backup pengelola mall.')
+  const parsed = mallBackupSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new UserError(kind === 'backup-mall' ? 'File backup pengelola mall ini rusak atau berasal dari versi aplikasi yang berbeda.' : 'File ini bukan backup pengelola mall.')
+  }
+  return parsed.data
+}
+
+/**
+ * Perangkat kosong belum punya sesi, jadi hak role mall dibuktikan dengan PIN akun mall di dalam file.
+ * Pemulihan hanya berjalan di perangkat kosong dan tidak pernah menimpa data. Pemeriksaannya ada di dalam
+ * transaksi, supaya tetap aman kalau perangkat baru saja disiapkan dari tab lain.
+ */
+export async function restoreMallBackup(backup: MallBackup, pin: string): Promise<Ctx> {
+  let user: User | undefined
+  for (const candidate of backup.users.filter((u) => u.role === 'mall')) {
+    if ((await hashPin(pin, candidate.salt)) === candidate.pinHash) user = candidate
+  }
+  if (!user) throw new UserError('PIN pengelola mall salah.')
+  const ctx: Ctx = { tenantId: 'mall', userId: user.id, userName: user.name, role: 'mall' }
+  await db.transaction('rw', ALL_TABLES, async () => {
+    for (const table of ALL_TABLES) {
+      if ((await table.count()) > 0) throw new UserError('Perangkat ini sudah berisi data, jadi backup tidak dipulihkan.')
+    }
+    await db.users.bulkAdd(backup.users)
+    await db.tenants.bulkAdd(backup.tenants)
+    await db.settings.bulkAdd(backup.settings)
+    await db.rekap.bulkAdd(backup.rekap)
+    await db.audit.bulkAdd(backup.audit)
+    await log(ctx, 'Pulihkan backup mall', `File ${backup.exportedAt}`)
+  })
+  return ctx
+}
+
+export async function lastMallBackupAt(ctx: Ctx): Promise<string | null> {
+  requireRole(ctx, 'mall')
+  const latest = await db.audit
+    .where('[tenantId+at]')
+    .between(['mall', ''], ['mall', '￿'])
+    .reverse()
+    .filter((a) => a.action === MALL_BACKUP_ACTION)
+    .first()
+  return latest?.at ?? null
 }
 
 export async function buildRekap(tenant: Tenant, month: string): Promise<Rekap> {

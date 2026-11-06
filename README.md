@@ -34,6 +34,19 @@ Build produksi tidak memuat data ini. Data contoh hanya aktif jika `VITE_DEMO_DA
 
 Satu perangkat bersama tidak perlu file: tenan yang ditambahkan pengelola langsung muncul di direktori.
 
+### Backup dan pemulihan perangkat mall
+
+Buat backup secara rutin lewat **Unduh backup** di bagian **Perangkat ini** pada layar pengelola, lalu simpan filenya di luar perangkat.
+
+- File memuat akun mall, daftar tenan beserta akun dan pengaturannya, rekap yang diterima, dan log pengelola. Simpan di tempat aman, karena PIN 4 sampai 6 angka bisa ditebak dari isi file oleh orang yang paham teknis.
+- Produk dan transaksi tenan tidak ikut. Pada perangkat bersama, tiap pemilik membuat backup tokonya sendiri dari **Pengaturan** dan memulihkannya setelah perangkat mall pulih.
+
+Untuk memulihkan, buka aplikasi di perangkat kosong, pilih **Pulihkan perangkat pengelola mall**, pilih filenya, lalu masukkan PIN pengelola yang berlaku saat backup dibuat. Perangkat yang sudah berisi data menolak pemulihan, jadi tidak ada data yang tertimpa. Kalau ingin memulihkan ke perangkat itu, kosongkan dulu lewat **Hapus semua data perangkat**.
+
+File backup mall dan file tenan saling menolak. File tenan tidak bisa memasang akun mall.
+
+Layar penyiapan hanya muncul di build tanpa data contoh, karena data contoh langsung mengisi perangkat kosong. Untuk mencobanya di lokal, jalankan `npm run build` lalu `npm run preview`.
+
 ## Struktur
 
 - `src/domain`: skema data dan perhitungan (total, pajak, kas shift)
