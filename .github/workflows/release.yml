@@ -50,6 +50,14 @@ jobs:
       - name: Kemas hasil build
         run: cd dist && zip -r "../pos-tenan-mall-$TAG.zip" .
 
+      # Sengaja dikunci sampai data dan PIN contoh dihapus dari aplikasi.
+      - name: Kirim ke Cloudflare Pages (produksi)
+        if: vars.ENABLE_PRODUCTION_DEPLOY == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 pages deploy dist --project-name=pos-tenan-mall --branch=main
+
       - name: Buat GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

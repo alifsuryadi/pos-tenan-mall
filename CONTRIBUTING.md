@@ -24,11 +24,37 @@ hotfix/* ───────────────────────�
 | Workflow | Berjalan saat | Hasil |
 |---|---|---|
 | CI | PR ke `main` atau `dev`, dan push ke keduanya | Tes, pemeriksaan tipe, dan build |
-| CI (push) | Push ke `dev` | Artefak `pos-staging-<commit>`, disimpan 14 hari |
+| CI (push) | Push ke `dev` | Artefak `pos-staging-<commit>` disimpan 14 hari, lalu deploy ke staging |
 | CI (push) | Push ke `main` | Artefak `pos-production-<commit>`, disimpan 14 hari |
-| Release | Push tag `vX.Y.Z` | GitHub Release berisi zip hasil build |
+| Release | Push tag `vX.Y.Z` | Deploy ke produksi jika diaktifkan, lalu GitHub Release berisi zip hasil build |
 
-Hasil build belum dikirim ke server mana pun, karena tempat hosting belum ditentukan.
+## Deploy ke Cloudflare Pages
+
+| Lingkungan | Sumber | Alamat |
+|---|---|---|
+| Staging | Push ke `dev` yang lulus CI | `https://dev.pos-tenan-mall.pages.dev` |
+| Produksi | Tag `vX.Y.Z` di `main` | `https://pos-tenan-mall.pages.dev`, atau domain sendiri |
+
+Penyiapan satu kali:
+
+1. Buat project Pages bernama `pos-tenan-mall` dengan production branch `main`:
+
+   ```bash
+   npx wrangler@4 pages project create pos-tenan-mall --production-branch=main
+   ```
+
+2. Buat API token dengan izin **Cloudflare Pages: Edit**.
+3. Di **Settings > Secrets and variables > Actions** pada repo GitHub, tambahkan secret `CLOUDFLARE_API_TOKEN` dan `CLOUDFLARE_ACCOUNT_ID`.
+
+Selama secret belum ada, deploy staging dilewati tanpa membuat CI gagal.
+
+### Mengaktifkan produksi
+
+Deploy produksi mati secara bawaan, karena aplikasi masih memuat data dan PIN contoh. Sebelum mengaktifkannya:
+
+1. Hapus data contoh dan petunjuk PIN di layar masuk.
+2. Pasang domain final. Data tersimpan per domain, jadi data di perangkat tenan tidak ikut pindah kalau domainnya berganti.
+3. Tambahkan variable repo `ENABLE_PRODUCTION_DEPLOY` dengan nilai `true`.
 
 ## Merilis versi baru
 
