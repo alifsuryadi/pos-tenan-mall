@@ -64,7 +64,7 @@ export function Shell({ ctx }: { ctx: repo.Ctx }) {
         <span className="ml-auto flex shrink-0 items-center gap-1 pr-2">
           <span className="max-w-28 truncate text-muted md:hidden lg:inline">{ctx.userName}</span>
           <Button tone="quiet" className="px-2" onClick={signOut}>
-            Kunci
+            Keluar
           </Button>
         </span>
       </header>

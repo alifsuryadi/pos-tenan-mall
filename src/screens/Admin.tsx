@@ -135,7 +135,7 @@ export function Admin({ ctx }: { ctx: repo.Ctx }) {
       <header className="flex min-h-14 items-center justify-between border-b border-line bg-surface pr-2 pl-4 sm:pl-6">
         <span className="sign text-2xl">Pengelola mall</span>
         <Button tone="quiet" className="px-2" onClick={signOut}>
-          Kunci
+          Keluar
         </Button>
       </header>
       <UpdateBanner />
